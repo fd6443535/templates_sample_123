@@ -259,5 +259,5 @@ app.get('/mobile/team/calendar', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Mobile demo server running at http://localhost:${PORT}/mobile/login`);
+  console.log(`Mobile demo server running`);
 });

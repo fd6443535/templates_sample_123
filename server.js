@@ -3,6 +3,7 @@ const cookieParser = require('cookie-parser');
 const path = require('path');
 const http = require('http');
 const https = require('https');
+const serverless = require('serverless-http');
 
 // Simple Mobile Demo Server
 // - Serves login and home pages under /mobile/*
@@ -254,7 +255,11 @@ app.get('/mobile/approvals/business/pending', (req, res) => {
 app.get('/mobile/team/hierarchy', (req, res) => {
   res.sendFile(path.join(__dirname, 'team_hierarchy.html'));
 });
+
 app.get('/mobile/team/calendar', (req, res) => {
   res.sendFile(path.join(__dirname, 'team_calendar.html'));
 });
 
+
+module.exports = app;
+module.exports.handler = serverless(app);

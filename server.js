@@ -258,6 +258,3 @@ app.get('/mobile/team/calendar', (req, res) => {
   res.sendFile(path.join(__dirname, 'team_calendar.html'));
 });
 
-app.listen(PORT, () => {
-  console.log(`Mobile demo server running`);
-});

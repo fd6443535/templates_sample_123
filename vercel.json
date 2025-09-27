@@ -2,9 +2,6 @@
     "version": 2,
     "cleanUrls": true,
     "trailingSlash": false,
-    "builds": [
-      { "src": "**/*", "use": "@vercel/static" }
-    ],
     "rewrites": [
       { "source": "/", "destination": "/mobile/login" },
       { "source": "/mobile", "destination": "/login.html" },
@@ -54,3 +51,4 @@
     ]
   }
   
+

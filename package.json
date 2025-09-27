@@ -1,11 +1,12 @@
 {
-  "name": "ess-mobile-web",
+  "name": "templates_sample_123",
   "version": "1.0.0",
-  "private": true,
+  "private": false,
   "description": "Static mobile demo UI for ESS, deployable standalone on Vercel.",
   "scripts": {
     "start": "npx http-server -p 3002 -c-1 .",
     "build": "node server.js",
   }
 }
+
 

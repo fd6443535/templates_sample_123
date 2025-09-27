@@ -4,6 +4,8 @@
   "private": true,
   "description": "Static mobile demo UI for ESS, deployable standalone on Vercel.",
   "scripts": {
-    "start": "npx http-server -p 3002 -c-1 ."
+    "start": "npx http-server -p 3002 -c-1 .",
+    "build": "node server.js",
   }
 }
+

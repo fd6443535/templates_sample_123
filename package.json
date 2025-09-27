@@ -1,10 +1,10 @@
 {
-  "name": "templates_sample_123",
+  "name": "template_sample_123",
   "version": "1.0.0",
-  "private": false,
+  "private": true,
   "description": "Static mobile demo UI for ESS, deployable standalone on Vercel.",
   "scripts": {
-    "start": "npx http-server -p 3002 -c-1 ."
+    "start": "node seed.js"
   },
   "dependencies": {
     "express": "^4.18.2",
@@ -12,10 +12,3 @@
     "serverless-http": "^3.0.0"
   }
 }
-
-
-
-
-
-
-

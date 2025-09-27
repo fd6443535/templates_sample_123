@@ -11,8 +11,6 @@ const serverless = require('serverless-http');
 // - On login, sets httpOnly cookies (EmpID, CompanyID) and redirects to /mobile/home
 
 const app = express();
-const PORT = process.env.MOBILE_PORT ? Number(process.env.MOBILE_PORT) : 3002;
-const API_BASE = process.env.API_BASE_URL || 'http://localhost:3001';
 
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: false }));
@@ -32,70 +30,6 @@ function buildCookieHeader(req) {
   return pairs.join('; ');
 }
 
-function proxyGet(apiPath, req, res, { binary = false } = {}) {
-  try {
-    const target = new URL(API_BASE + apiPath);
-    const mod = target.protocol === 'https:' ? https : http;
-    const options = {
-      method: 'GET',
-      headers: {
-        'Accept': binary ? '*/*' : 'application/json',
-        'Cookie': buildCookieHeader(req)
-      },
-    };
-    const pReq = mod.request(target, options, (pRes) => {
-      if (binary) {
-        res.status(pRes.statusCode || 200);
-        if (pRes.headers['content-type']) res.setHeader('Content-Type', pRes.headers['content-type']);
-        if (pRes.headers['content-length']) res.setHeader('Content-Length', pRes.headers['content-length']);
-        pRes.pipe(res);
-      } else {
-        let data = '';
-        pRes.setEncoding('utf8');
-        pRes.on('data', (chunk) => (data += chunk));
-        pRes.on('end', () => {
-          res.status(pRes.statusCode || 200);
-          const ct = pRes.headers['content-type'] || '';
-          if (ct.includes('application/json')) {
-            try {
-              const json = JSON.parse(data || '{}');
-              return res.json(json);
-            } catch {
-              // not json, fallthrough
-            }
-          }
-          res.setHeader('Content-Type', ct || 'application/json');
-          res.send(data);
-        });
-      }
-    });
-    pReq.on('error', (err) => {
-      console.error('Proxy error:', err);
-      res.status(502).json({ error: 'Bad Gateway', detail: err.message });
-    });
-    pReq.end();
-  } catch (e) {
-    console.error('Proxy setup error:', e);
-    res.status(500).json({ error: 'Proxy error', detail: e.message });
-  }
-}
-
-// Mobile API endpoints (server-side proxy)
-app.get('/mobile/api/profile/summary', (req, res) => {
-  proxyGet('/api/profile/getProfileSummary', req, res);
-});
-
-app.get('/mobile/api/profile/photo', (req, res) => {
-  proxyGet('/api/profile/getPhoto', req, res, { binary: true });
-});
-
-app.get('/mobile/api/attendance/latest-time', (req, res) => {
-  proxyGet('/api/attendance/getCheckinCheckoutTime', req, res);
-});
-
-app.get('/mobile/api/notification/list', (req, res) => {
-  proxyGet('/api/notification/getNotifications', req, res);
-});
 
 // Redirect base to login for convenience
 app.get(['/mobile', '/'], (req, res) => {
@@ -255,11 +189,9 @@ app.get('/mobile/approvals/business/pending', (req, res) => {
 app.get('/mobile/team/hierarchy', (req, res) => {
   res.sendFile(path.join(__dirname, 'team_hierarchy.html'));
 });
-
 app.get('/mobile/team/calendar', (req, res) => {
   res.sendFile(path.join(__dirname, 'team_calendar.html'));
 });
-
 
 module.exports = app;
 module.exports.handler = serverless(app);

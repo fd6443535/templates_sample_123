@@ -4,8 +4,7 @@
   "private": false,
   "description": "Static mobile demo UI for ESS, deployable standalone on Vercel.",
   "scripts": {
-    "start": "npx http-server -p 3002 -c-1 .",
-    "build": "node server.js"
+    "start": "npx http-server -p 3002 -c-1 ."
   },
   "dependencies": {
     "cors": "^2.8.5",
@@ -16,6 +15,7 @@
     "cookie-parser": "^1.4.7"
   }
 }
+
 
 
 

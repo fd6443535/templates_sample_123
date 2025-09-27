@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>On Behalf - Leave</title>
+  <style>
+    :root { --bg:#f7f9fc; --card:#fff; --text:#222; --muted:#667085; --border:#e5e7eb; --primary:#2563eb; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background:var(--bg); color:var(--text); }
+    header { position:sticky; top:0; background:var(--card); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; padding:12px 16px; }
+    .back { background:transparent; border:1px solid var(--border); padding:6px 10px; border-radius:8px; cursor:pointer; }
+    .title { font-weight:700; }
+    .wrap { padding:16px; display:grid; gap:12px; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; }
+    .muted { color:var(--muted); font-size:13px; }
+    .form-card .field { display: grid; gap: 6px; margin-bottom: 10px; }
+    .form-card label { font-size: 13px; color: #475569; }
+    .form-card input[type="text"], .form-card input[type="date"], .form-card select, .form-card textarea, .form-card input[type="file"] { padding: 8px; border: 1px solid var(--border); border-radius: 8px; font: inherit; }
+    .form-card textarea { min-height: 72px; resize: vertical; }
+    .actions { display:flex; gap: 8px; margin-top: 8px; }
+    .btn { padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); cursor: pointer; background: #fff; }
+    .btn.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+    #snackbar { visibility: hidden; min-width: 240px; max-width: 90vw; background-color: #333; color: #fff; text-align: center; border-radius: 8px; padding: 12px 16px; position: fixed; left: 50%; transform: translateX(-50%); bottom: 24px; z-index: 1000; }
+    #snackbar.show { visibility: visible; animation: fadein 0.2s, fadeout 0.2s 3s; }
+    @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes fadeout { from { opacity: 1; } to { opacity: 0; } }
+  </style>
+</head>
+<body>
+  <header>
+    <button class="back" id="btnBack">← Back</button>
+    <div class="title">Request on Behalf – Leave</div>
+  </header>
+
+  <div class="wrap">
+    <section class="card form-card" id="leaveForm">
+      <div class="muted">Submit Leave on Behalf</div>
+      <div class="field">
+        <label for="empid">Employee ID</label>
+        <input type="text" id="empid" placeholder="Target employee ID" />
+      </div>
+      <div class="field">
+        <label for="leaveType">Leave Type</label>
+        <select id="leaveType" name="Type"></select>
+        <div id="leaveBalance" class="muted"></div>
+      </div>
+      <div class="field">
+        <label for="fromDate">Start Date</label>
+        <input type="date" id="fromDate" name="FromDate" />
+      </div>
+      <div class="field">
+        <label for="toDate">End Date</label>
+        <input type="date" id="toDate" name="ToDate" />
+      </div>
+      <div class="field">
+        <label for="description">Reason</label>
+        <textarea id="description" name="Description" placeholder="Reason"></textarea>
+      </div>
+      <div class="field">
+        <label for="attachment">Attachment (optional)</label>
+        <input type="file" id="attachment" name="attachment" accept="application/pdf,image/*" />
+      </div>
+      <div class="actions">
+        <button class="btn primary" id="btnSubmit">Submit</button>
+        <button class="btn" id="btnCancel">Cancel</button>
+      </div>
+    </section>
+  </div>
+
+  <div id="snackbar"></div>
+
+  <script>
+    const API_BASE = 'http://localhost:3001';
+
+    document.getElementById('btnBack').addEventListener('click', () => {
+      window.location.href = '/mobile/home';
+    });
+
+    function showSnack(message){ const bar=document.getElementById('snackbar'); bar.textContent=message; bar.classList.add('show'); setTimeout(()=>bar.classList.remove('show'),3200); }
+    function daysBetweenInclusive(fromStr, toStr){ if(!fromStr||!toStr) return 0; const from=new Date(fromStr+'T00:00:00'); const to=new Date(toStr+'T00:00:00'); if(isNaN(from)||isNaN(to)) return 0; return Math.ceil((to-from)/(1000*60*60*24))+1; }
+
+    let leaveTypesLoaded=false; let leaveTypeMap={};
+    async function loadLeaveTypes(){ if(leaveTypesLoaded) return; try{ const res=await fetch(`${API_BASE}/api/leave/getLeaveRequestTypes`,{credentials:'include'}); if(!res.ok) throw new Error('Failed to load leave types'); const types=await res.json(); const sel=document.getElementById('leaveType'); sel.innerHTML=''; leaveTypeMap={}; if(Array.isArray(types)&&types.length){ types.forEach(t=>{ const name=t?.TypeName??''; const rem=Number.isFinite(+t?.RemainingDays)?+t.RemainingDays:undefined; if(name){ leaveTypeMap[name]={remaining:rem}; const opt=document.createElement('option'); opt.value=name; opt.textContent=name+(rem!=null?` (Remaining: ${rem})`:'' ); sel.appendChild(opt); } }); } else { const opt=document.createElement('option'); opt.value=''; opt.textContent='No types available'; sel.appendChild(opt);} leaveTypesLoaded=true; updateBalanceDisplay(); }catch(e){ console.error(e); showSnack(`Error: ${e.message}`);} }
+
+    function updateBalanceDisplay(){ const type=document.getElementById('leaveType').value; const fromDate=document.getElementById('fromDate').value; const toDate=document.getElementById('toDate').value; const info=leaveTypeMap[type]||{}; const rem=info.remaining; const requested=(fromDate&&toDate)?daysBetweenInclusive(fromDate,toDate):0; const balEl=document.getElementById('leaveBalance'); if(rem!=null){ balEl.textContent=`Remaining: ${rem} day(s). Requested: ${requested||0}`; if(new Date(fromDate)>new Date(toDate)) balEl.textContent += ' — invalid range'; } else { balEl.textContent=''; } }
+
+    document.addEventListener('DOMContentLoaded', ()=>{ const today=new Date().toISOString().slice(0,10); document.getElementById('fromDate').value=today; document.getElementById('toDate').value=today; loadLeaveTypes(); });
+    document.getElementById('fromDate').addEventListener('change', updateBalanceDisplay);
+    document.getElementById('toDate').addEventListener('change', updateBalanceDisplay);
+    document.getElementById('leaveType').addEventListener('change', updateBalanceDisplay);
+
+    document.getElementById('btnCancel').addEventListener('click', (e)=>{ e.preventDefault(); window.location.href='/mobile/home'; });
+
+    document.getElementById('btnSubmit').addEventListener('click', async (e)=>{
+      e.preventDefault();
+      const empid=document.getElementById('empid').value.trim();
+      const type=document.getElementById('leaveType').value;
+      const fromDate=document.getElementById('fromDate').value;
+      const toDate=document.getElementById('toDate').value;
+      const description=document.getElementById('description').value;
+      const file=document.getElementById('attachment').files[0];
+      if(!empid){ showSnack('Please enter Employee ID'); return; }
+      if(!type||!fromDate||!toDate){ showSnack('Please fill Leave Type, Start and End dates'); return; }
+      if(new Date(fromDate)>new Date(toDate)){ showSnack('Start Date cannot be after End Date'); return; }
+      const fd=new FormData();
+      fd.append('empid', empid);
+      fd.append('Type', type);
+      fd.append('FromDate', fromDate);
+      fd.append('ToDate', toDate);
+      fd.append('Description', description||'');
+      if(file) fd.append('attachment', file);
+      try{
+        const res=await fetch(`${API_BASE}/api/leave/submitLeaveRequestOnBehalf`,{ method:'POST', body:fd, credentials:'include' });
+        const data=await res.json().catch(()=>({}));
+        if(!res.ok) throw new Error(data?.error||'Request failed');
+        showSnack('Leave submitted on behalf');
+        setTimeout(()=>{ window.location.href='/mobile/home'; },800);
+      }catch(err){ console.error(err); showSnack(`Error: ${err.message}`); }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Teams - Calendar</title>
+  <style>
+    :root { --bg:#f7f9fc; --card:#fff; --text:#0f172a; --muted:#64748b; --border:#e5e7eb; --primary:#2563eb; --green:#22c55e; --blue:#60a5fa; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background:var(--bg); color:var(--text); }
+    header { position:sticky; top:0; background:var(--card); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; padding:12px 16px; z-index:5 }
+    .back { background:transparent; border:1px solid var(--border); padding:6px 10px; border-radius:8px; cursor:pointer; }
+    .title { font-weight:700; }
+    .wrap { padding:12px; display:grid; gap:12px; }
+
+    .controls { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .chip { background:#f3f4f6; border:1px solid #e5e7eb; padding:6px 10px; border-radius:999px; cursor:pointer; font-size:13px; }
+    .chip.active { background:#111827; color:#fff; border-color:#111827; }
+    .spacer { flex:1; }
+    .nav { display:flex; gap:6px; }
+    .nav button { border:1px solid var(--border); background:#fff; border-radius:8px; padding:6px 10px; cursor:pointer; }
+
+    .calendar { border:1px solid var(--border); border-radius:12px; overflow:auto; background:var(--card); }
+    .grid { display:grid; grid-template-columns: 180px auto; min-width: 720px; }
+    .col-names { background:#f8fafc; border-right:1px solid var(--border); }
+    .col-days { overflow:auto; }
+
+    .row { display:grid; grid-template-columns: 180px 1fr; }
+    .cell { padding:10px; border-bottom:1px solid var(--border); }
+    .name { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+    .days { display:grid; }
+    .dayhead { padding:8px 6px; border-left:1px solid var(--border); border-bottom:1px solid var(--border); text-align:center; font-size:12px; color:var(--muted); }
+    .dayhead b { display:block; color:#111827; font-size:13px; }
+
+    .events { position:relative; display:grid; grid-template-rows: 48px; }
+    .slot { border-left:1px solid var(--border); border-bottom:1px solid var(--border); height:48px; }
+
+    .bar { position:relative; border-radius:8px; padding:3px 8px; font-size:12px; color:#0f172a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; align-self:start; }
+    .bar.leave { background:#dcfce7; border:1px solid #86efac; }
+    .bar.trip { background:#dbeafe; border:1px solid #93c5fd; }
+
+    .legend { display:flex; gap:8px; align-items:center; font-size:12px; color:#475569; }
+    .legend .dot { width:10px; height:10px; border-radius:999px; display:inline-block; }
+    .dot.leave { background:#22c55e; }
+    .dot.trip { background:#60a5fa; }
+  </style>
+</head>
+<body>
+  <header>
+    <button class="back" id="btnBack">← Back</button>
+    <div class="title">Team Calendar</div>
+  </header>
+
+  <div class="wrap">
+    <div class="controls">
+      <div class="legend"><span class="dot leave"></span>Leave <span class="dot trip"></span>Trip</div>
+      <div class="spacer"></div>
+      <div id="modeDaily" class="chip">Daily</div>
+      <div id="modeWeekly" class="chip active">Weekly</div>
+      <div id="modeMonthly" class="chip">Monthly</div>
+      <div class="spacer"></div>
+      <div class="nav">
+        <button id="btnPrev">◀</button>
+        <div id="rangeLabel" class="chip" style="cursor:default;">—</div>
+        <button id="btnNext">▶</button>
+      </div>
+    </div>
+
+    <div class="calendar">
+      <div id="grid" class="grid">
+        <!-- Filled by JS -->
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = 'http://localhost:3001';
+
+    document.getElementById('btnBack').addEventListener('click', () => {
+      window.location.href = '/mobile/home';
+    });
+
+    // Date helpers
+    function startOfDay(d){ return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+    function addDays(d, n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
+    function startOfWeek(d){ const x=startOfDay(d); const day=x.getDay(); const diff=(day+6)%7; x.setDate(x.getDate()-diff); return x; } // Monday
+    function startOfMonth(d){ return new Date(d.getFullYear(), d.getMonth(), 1); }
+    function endOfMonth(d){ return new Date(d.getFullYear(), d.getMonth()+1, 0); }
+    function fmtDay(d){ return d.toLocaleDateString(undefined,{ day:'2-digit'}); }
+    function fmtDow(d){ return d.toLocaleDateString(undefined,{ weekday:'short'}); }
+    function fmtMonthYear(d){ return d.toLocaleDateString(undefined,{ month:'short', year:'numeric'}); }
+
+    let mode = 'weekly';
+    let anchor = new Date();
+    let dataCache = null;
+
+    function buildRange(){
+      if (mode === 'daily'){
+        const s = startOfDay(anchor);
+        return { dates:[s], label: s.toLocaleDateString(undefined,{ day:'2-digit', month:'short', year:'numeric'}) };
+      }
+      if (mode === 'weekly'){
+        const s = startOfWeek(anchor);
+        const dates = Array.from({length:7},(_,i)=>addDays(s,i));
+        const lbl = `${fmtMonthYear(dates[0])}`;
+        return { dates, label: lbl };
+      }
+      // monthly
+      const s = startOfMonth(anchor);
+      const e = endOfMonth(anchor);
+      const days = (e.getDate()-s.getDate()+1);
+      const dates = Array.from({length:days},(_,i)=>addDays(s,i));
+      return { dates, label: fmtMonthYear(anchor) };
+    }
+
+    async function fetchCalendar(){
+      if (dataCache) return dataCache;
+      const res = await fetch(`${API_BASE}/api/team/getTeamCalendar`, { credentials:'include' });
+      if (!res.ok) throw new Error('Failed to load team calendar');
+      const arr = await res.json();
+      // Normalize
+      dataCache = Array.isArray(arr) ? arr.map(p=>({
+        EmpID: p.EmpID,
+        Name: p.Name,
+        Leaves: Array.isArray(p.Leaves)?p.Leaves:[],
+        Trips: Array.isArray(p.Trips)?p.Trips:[],
+      })) : [];
+      return dataCache;
+    }
+
+    function overlaps(aStart,aEnd,bStart,bEnd){
+      return aStart <= bEnd && bStart <= aEnd;
+    }
+
+    function toDateOnly(x){ if(!x) return null; const d=new Date(x); return new Date(d.getFullYear(),d.getMonth(),d.getDate()); }
+
+    function renderGrid(team, dates){
+      const grid = document.getElementById('grid');
+      grid.innerHTML = '';
+
+      // Header row
+      const topRow = document.createElement('div'); topRow.className='row';
+      const headNames = document.createElement('div'); headNames.className='cell col-names'; headNames.innerHTML = '<b>Team</b>';
+      const headDays = document.createElement('div');
+      const days = document.createElement('div'); days.className='days'; days.style.gridTemplateColumns = `repeat(${dates.length}, minmax(64px, 1fr))`;
+      dates.forEach(d => {
+        const h = document.createElement('div'); h.className='dayhead'; h.innerHTML = `<b>${fmtDay(d)}</b>${fmtDow(d)}`; days.appendChild(h);
+      });
+      headDays.appendChild(days);
+      topRow.appendChild(headNames); topRow.appendChild(headDays);
+      grid.appendChild(topRow);
+
+      // Rows
+      team.forEach(p => {
+        const row = document.createElement('div'); row.className='row';
+        const nameCell = document.createElement('div'); nameCell.className='cell col-names name'; nameCell.textContent = p.Name || p.EmpID || '—';
+        const evCell = document.createElement('div'); evCell.className='cell';
+
+        const events = document.createElement('div'); events.className='events';
+        events.style.gridTemplateColumns = `repeat(${dates.length}, minmax(64px, 1fr))`;
+
+        // grid slots for lines
+        for(let i=0;i<dates.length;i++){
+          const slot = document.createElement('div'); slot.className='slot';
+          events.appendChild(slot);
+        }
+
+        // Build events (leaves + trips)
+        const items = [];
+        for (const lv of p.Leaves){
+          const s = toDateOnly(lv.FromDate); const e = toDateOnly(lv.ToDate);
+          if (!s || !e) continue;
+          items.push({ kind:'leave', start:s, end:e, label:(lv.Type||'Leave') });
+        }
+        for (const tr of p.Trips){
+          const s = toDateOnly(tr.StartDate); const e = toDateOnly(tr.EndDate);
+          if (!s || !e) continue;
+          items.push({ kind:'trip', start:s, end:e, label:(tr.Location ? `Trip: ${tr.Location}` : 'Trip') });
+        }
+
+        // Assign tracks to avoid overlap
+        const tracks = []; // each is lastEndIndex
+        const dayIndex = d => dates.findIndex(x => x.getTime() === startOfDay(d).getTime());
+        const gridStart = dates[0];
+        const gridEnd = dates[dates.length-1];
+
+        const bars = [];
+        items.sort((a,b)=>a.start-b.start).forEach(ev => {
+          if (!overlaps(ev.start, ev.end, gridStart, gridEnd)) return;
+          const startDate = ev.start < gridStart ? gridStart : ev.start;
+          const endDate = ev.end > gridEnd ? gridEnd : ev.end;
+          let cStart = dayIndex(startDate);
+          let cEnd = dayIndex(endDate);
+          if (cStart === -1 || cEnd === -1) return;
+          // inclusive end
+          cEnd = cEnd + 1;
+          // place in first available track
+          let t = 0;
+          while (t < tracks.length && tracks[t] >= cStart) t++;
+          tracks[t] = cEnd - 1; // last occupied index in this track
+          bars.push({ ev, cStart, cEnd, track:t });
+        });
+
+        // Render bars
+        bars.forEach(b => {
+          const span = document.createElement('div');
+          span.className = `bar ${b.ev.kind}`;
+          span.style.gridColumn = `${b.cStart+1} / ${b.cEnd+1}`; // +1 because first child is slot
+          span.style.gridRow = '1';
+          span.style.marginTop = `${b.track * 22}px`;
+          span.style.zIndex = '1';
+          span.textContent = b.ev.label;
+          events.appendChild(span);
+        });
+        // Adjust row height to fit tracks
+        const minH = Math.max(48, (tracks.length ? (tracks.length*24 + 8) : 48));
+        events.style.minHeight = `${minH}px`;
+
+        evCell.appendChild(events);
+        row.appendChild(nameCell); row.appendChild(evCell);
+        grid.appendChild(row);
+      });
+    }
+
+    async function load(){
+      try{
+        const team = await fetchCalendar();
+        const { dates, label } = buildRange();
+        document.getElementById('rangeLabel').textContent = label;
+        renderGrid(team, dates);
+      }catch(e){
+        console.error(e);
+        const g = document.getElementById('grid');
+        g.innerHTML = `<div class="cell">Error: ${e.message}</div>`;
+      }
+    }
+
+    function setMode(m){ mode = m; document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active')); if(m==='daily') modeDaily.classList.add('active'); if(m==='weekly') modeWeekly.classList.add('active'); if(m==='monthly') modeMonthly.classList.add('active'); load(); }
+
+    document.getElementById('modeDaily').addEventListener('click', ()=> setMode('daily'));
+    document.getElementById('modeWeekly').addEventListener('click', ()=> setMode('weekly'));
+    document.getElementById('modeMonthly').addEventListener('click', ()=> setMode('monthly'));
+
+    document.getElementById('btnPrev').addEventListener('click', ()=>{ if(mode==='daily') anchor=addDays(anchor,-1); else if(mode==='weekly') anchor=addDays(anchor,-7); else { anchor=new Date(anchor.getFullYear(), anchor.getMonth()-1, 1);} load(); });
+    document.getElementById('btnNext').addEventListener('click', ()=>{ if(mode==='daily') anchor=addDays(anchor,1); else if(mode==='weekly') anchor=addDays(anchor,7); else { anchor=new Date(anchor.getFullYear(), anchor.getMonth()+1, 1);} load(); });
+
+    document.addEventListener('DOMContentLoaded', load);
+  </script>
+</body>
+</html>

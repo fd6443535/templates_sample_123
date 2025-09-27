@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Document - Request Details</title>
+  <style>
+    :root { --bg:#f7f9fc; --card:#fff; --text:#222; --muted:#667085; --border:#e5e7eb; --primary:#2563eb; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background:var(--bg); color:var(--text); }
+    header { position:sticky; top:0; background:var(--card); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; padding:12px 16px; }
+    .back { background:transparent; border:1px solid var(--border); padding:6px 10px; border-radius:8px; cursor:pointer; }
+    .title { font-weight:700; }
+    .wrap { padding:16px; display:grid; gap:12px; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; }
+    .muted { color:var(--muted); font-size:13px; }
+    .kv { display:grid; gap:8px; }
+    .row { display:flex; justify-content:space-between; gap:10px; }
+    .key { color:#475569; }
+    .val { font-weight:600; }
+    .btn { padding:8px 12px; border-radius:8px; border:1px solid var(--border); background:#fff; cursor:pointer; }
+    .btn.primary { background: var(--primary); color:#fff; border-color: var(--primary); }
+    .actions-bar { position: sticky; bottom:0; background:var(--card); border-top:1px solid var(--border); padding:10px; display:flex; gap:8px; z-index:10; }
+    .btn.danger { background:#ef4444; color:#fff; border-color:#ef4444; }
+    .btn.success { background:#16a34a; color:#fff; border-color:#16a34a; }
+    .backdrop { position: fixed; inset:0; background: rgba(0,0,0,.35); display:none; align-items:center; justify-content:center; z-index:50; }
+    .dialog { width:min(520px,95vw); background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; box-shadow:0 10px 30px rgba(0,0,0,.2); }
+    .dialog h3 { margin:6px 0 10px; }
+    .dlg-actions { display:flex; justify-content:flex-end; gap:8px; margin-top: 10px; }
+    .delegate-list { max-height:45vh; overflow:auto; border:1px solid var(--border); border-radius:10px; padding:8px; display:grid; gap:8px; background:#fff; }
+    .delegate-item { display:flex; align-items:center; gap:10px; padding:6px; border:1px solid var(--border); border-radius:10px; }
+    .delegate-item img { width:32px; height:32px; border-radius:50%; object-fit:cover; border:1px solid var(--border); background:#f8fafc; }
+    .delegate-meta { font-size:12px; color:#475569; }
+    .dlg-input { width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:8px; }
+    #snackbar { visibility:hidden; min-width:240px; max-width:90vw; background:#333; color:#fff; text-align:center; border-radius:8px; padding:12px 16px; position:fixed; left:50%; transform:translateX(-50%); bottom:24px; z-index:1000 }
+    #snackbar.show { visibility:visible; animation: fadein .2s, fadeout .2s 3s }
+    @keyframes fadein { from{opacity:0} to{opacity:1} }
+    @keyframes fadeout { from{opacity:1} to{opacity:0} }
+  </style>
+</head>
+<body>
+  <header>
+    <button class="back" id="btnBack">← Back</button>
+    <div class="title">Document – Request Details</div>
+    <button class="back" id="btnWorkflow" style="margin-left:auto">Workflow</button>
+  </header>
+
+  <div class="wrap">
+    <section class="card">
+      <div id="status" class="muted">Loading request details...</div>
+      <div id="content" class="kv" style="display:none;"></div>
+    </section>
+  </div>
+
+  <div class="actions-bar">
+    <button class="btn success" id="btnApprove">Approve</button>
+    <button class="btn danger" id="btnReject">Reject</button>
+    <button class="btn" id="btnDelegate">Delegate</button>
+    <button class="btn" id="btnChangeReq">Change Request</button>
+  </div>
+
+  <!-- Delegate dialog -->
+  <div class="backdrop" id="dlgBackdrop" aria-hidden="true">
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlgTitle">
+      <h3 id="dlgTitle">Delegate Request</h3>
+      <div style="margin-bottom:8px;">
+        <label for="delegateComment" class="muted">Comment (optional)</label>
+        <textarea id="delegateComment" class="dlg-input" rows="2" placeholder="Add a comment (optional)"></textarea>
+      </div>
+      <div class="muted" style="margin-bottom:6px;">Select an employee to delegate to:</div>
+      <div id="delegateList" class="delegate-list"></div>
+      <div class="dlg-actions">
+        <button class="btn" id="btnDlgCancel">Cancel</button>
+        <button class="btn primary" id="btnDlgConfirm" disabled>Delegate</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="snackbar"></div>
+
+  <script>
+    const API_BASE = 'http://localhost:3001';
+    function getQuery(key) { const u = new URL(window.location.href); return u.searchParams.get(key); }
+    function fmtDate(s){ if(!s) return '—'; try{ return new Date(s).toISOString().slice(0,10);}catch{ return String(s);} }
+    function getVal(o, keys){ for(const k of keys){ if(o && o[k] != null) return o[k]; } return undefined; }
+    function showSnack(message){ const bar=document.getElementById('snackbar'); bar.textContent=message; bar.classList.add('show'); setTimeout(()=>bar.classList.remove('show'),3200); }
+    function getReqId(){ return new URL(window.location.href).searchParams.get('reqid'); }
+
+    document.getElementById('btnBack').addEventListener('click', () => {
+      if (window.history.length > 1) window.history.back();
+      else window.location.href = '/mobile/document/transactions';
+    });
+
+    function renderDetails(d){
+      const map = [
+        ['DocumentReqID', getVal(d, ['documentReqID','DocumentReqID','reqID','ReqID']) || '—'],
+        ['EmpID', getVal(d, ['EmpID','empID']) || '—'],
+        ['CompanyID', getVal(d, ['CompanyID','companyID']) || '—'],
+        ['Type', getVal(d, ['Type','type']) || '—'],
+        ['Reason', getVal(d, ['Reason','reason']) || '—'],
+        ['Status', getVal(d, ['Status','status']) || '—'],
+        ['Approver EmpID', getVal(d, ['approverEmpID','ApproverEmpID']) || '—'],
+        ['Req Date', fmtDate(getVal(d, ['ReqDate','reqDate','submittedDate','createdDate']))],
+      ];
+      const content = document.getElementById('content');
+      content.innerHTML = map.map(([k,v]) => `<div class="row"><div class="key">${k}</div><div class="val">${v}</div></div>`).join('');
+      content.style.display = 'grid';
+    }
+
+    async function loadDetails(){
+      const statusEl = document.getElementById('status');
+      statusEl.textContent = 'Loading request details...';
+      const reqid = getQuery('reqid');
+      if (!reqid) { statusEl.textContent = 'Missing reqid in URL'; return; }
+      try {
+        const url = `${API_BASE}/api/document/getDocumentRequestDetails/${encodeURIComponent(reqid)}`;
+        // Controller also supports query ?reqid=, but route is defined with param
+        const res = await fetch(url, { credentials: 'include' });
+        if (!res.ok) throw new Error(`Failed to load (${res.status})`);
+        const data = await res.json();
+        statusEl.textContent = '';
+        renderDetails(data || {});
+      } catch (e) {
+        console.error(e);
+        statusEl.textContent = `Error: ${e.message}`;
+      }
+    }
+
+    // Actions
+    async function doApproveReject(action){
+      const reqid = getReqId();
+      if (!reqid) { showSnack('Missing reqid'); return; }
+      const comment = prompt('Comment (optional)');
+      try{
+        const res = await fetch(`${API_BASE}/api/document/approveRejectDocumentRequest`, {
+          method: 'PATCH',
+          headers: { 'Content-Type':'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ reqid, action, comments: comment || null })
+        });
+        const data = await res.json().catch(()=>({}));
+        if (!res.ok) throw new Error(data?.error || `Failed to ${action}`);
+        showSnack(action === 'approve' ? 'Approved' : 'Rejected');
+        setTimeout(()=>{ window.location.href = '/mobile/approvals/document/pending'; }, 600);
+      }catch(e){ console.error(e); showSnack(`Error: ${e.message}`); }
+    }
+
+    async function doChangeRequest(){
+      const reqid = getReqId();
+      if (!reqid) { showSnack('Missing reqid'); return; }
+      const comment = prompt('Comment (optional)');
+      try{
+        const res = await fetch(`${API_BASE}/api/document/changeDocumentApproval`, {
+          method: 'PATCH',
+          headers: { 'Content-Type':'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ reqid })
+        });
+        const data = await res.json().catch(()=>({}));
+        if (!res.ok) throw new Error(data?.error || 'Failed to mark change request');
+        showSnack('Marked as Change Request');
+        setTimeout(()=>{ window.location.href = '/mobile/approvals/document/pending'; }, 600);
+      }catch(e){ console.error(e); showSnack(`Error: ${e.message}`); }
+    }
+
+    // Delegate flow
+    let selectedDelegateEmpID = null;
+    function closeDelegateDialog(){
+      document.getElementById('dlgBackdrop').style.display = 'none';
+      selectedDelegateEmpID = null;
+      document.getElementById('btnDlgConfirm').disabled = true;
+      document.getElementById('delegateComment').value = '';
+      document.getElementById('delegateList').innerHTML = '';
+    }
+    function renderDelegates(list){
+      const box = document.getElementById('delegateList');
+      if (!list || list.length === 0){ box.innerHTML = '<div class="muted">No delegates available</div>'; return; }
+      box.innerHTML = list.map(d => {
+        const img = d.photo ? `data:image/png;base64,${d.photo}` : '';
+        const safeName = d.name || d.Name || d.empid || d.EmpID || 'Employee';
+        const pos = d.position || d.Position || '';
+        const dep = d.department || d.Department || '';
+        const empid = d.empid || d.EmpID || '';
+        return `
+          <label class=\"delegate-item\">\n            <input type=\"radio\" name=\"delegateChoice\" value=\"${empid}\">\n            <img alt=\"photo\" src=\"${img}\" onerror=\"this.style.display='none'\" />\n            <div>\n              <div style=\"font-weight:600;\">${safeName} <span class=\"muted\" style=\"font-weight:400;\">(${empid})</span></div>\n              <div class=\"delegate-meta\">${pos}${pos && dep ? ' • ' : ''}${dep}</div>\n            </div>\n          </label>`;
+      }).join('');
+      box.querySelectorAll('input[name="delegateChoice"]').forEach(r => {
+        r.addEventListener('change', () => {
+          selectedDelegateEmpID = r.value;
+          document.getElementById('btnDlgConfirm').disabled = !selectedDelegateEmpID;
+        });
+      });
+    }
+    async function openDelegateDialog(){
+      document.getElementById('dlgBackdrop').style.display = 'flex';
+      document.getElementById('btnDlgConfirm').disabled = true;
+      document.getElementById('delegateList').innerHTML = '<div class="muted">Loading delegates...</div>';
+      try{
+        const res = await fetch(`${API_BASE}/api/request/getDelegates`, { credentials: 'include' });
+        if (!res.ok) throw new Error('Failed to load delegates');
+        const list = await res.json();
+        renderDelegates(list || []);
+      }catch(e){ console.error(e); document.getElementById('delegateList').innerHTML = `<div class=muted>Error: ${e.message}</div>`; }
+    }
+    async function confirmDelegate(){
+      const reqid = getReqId();
+      if (!reqid || !selectedDelegateEmpID) return;
+      const comments = document.getElementById('delegateComment').value || null;
+      try{
+        const res = await fetch(`${API_BASE}/api/document/delegateDocumentRequest`, {
+          method: 'POST',
+          headers: { 'Content-Type':'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ reqid, newApproverEmpID: selectedDelegateEmpID, comments })
+        });
+        const data = await res.json().catch(()=>({}));
+        if (!res.ok) throw new Error(data?.error || 'Failed to delegate');
+        closeDelegateDialog();
+        showSnack('Delegated');
+        setTimeout(()=>{ window.location.href = '/mobile/approvals/document/pending'; }, 600);
+      }catch(e){ console.error(e); showSnack(`Error: ${e.message}`); }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadDetails();
+      document.getElementById('btnApprove').addEventListener('click', () => doApproveReject('approve'));
+      document.getElementById('btnReject').addEventListener('click', () => doApproveReject('reject'));
+      document.getElementById('btnDelegate').addEventListener('click', openDelegateDialog);
+      document.getElementById('btnChangeReq').addEventListener('click', doChangeRequest);
+      // Workflow
+      document.getElementById('btnWorkflow').addEventListener('click', () => {
+        const id = getReqId();
+        window.location.href = `/mobile/workflow?reqid=${encodeURIComponent(id || '')}&type=Document`;
+      });
+      document.getElementById('btnDlgCancel').addEventListener('click', closeDelegateDialog);
+      document.getElementById('btnDlgConfirm').addEventListener('click', confirmDelegate);
+    });
+  </script>
+</body>
+</html>

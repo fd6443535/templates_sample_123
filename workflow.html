@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Workflow Status</title>
+  <style>
+    :root { --bg:#f7f9fc; --card:#fff; --text:#222; --muted:#667085; --border:#e5e7eb; --primary:#2563eb; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background:var(--bg); color:var(--text); }
+    header { position:sticky; top:0; background:var(--card); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; padding:12px 16px; z-index: 5; }
+    .back { background:transparent; border:1px solid var(--border); padding:6px 10px; border-radius:8px; cursor:pointer; }
+    .title { font-weight:700; font-size: 18px; }
+    .wrap { padding:16px; display:grid; gap:12px; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; }
+    .muted { color:var(--muted); font-size:13px; }
+
+    /* Summary header */
+    .summary { display:grid; gap:8px; }
+    .summary-row { display:flex; justify-content:space-between; gap:12px; }
+    .label { color:#6b7280; }
+    .value { font-weight:600; }
+
+    /* Timeline */
+    .timeline { position:relative; margin-left:24px; }
+    .timeline::before { content:""; position:absolute; left:10px; top:0; bottom:0; width:2px; background:#e5e7eb; }
+    .step { position:relative; display:flex; align-items:flex-start; gap:12px; padding:12px 0; }
+    .dot { position:absolute; left:-2px; top:18px; width:10px; height:10px; background:#cbd5e1; border-radius:999px; border:2px solid #fff; box-shadow:0 0 0 2px #e5e7eb; }
+    .avatar { width:40px; height:40px; border-radius:999px; object-fit:cover; border:1px solid var(--border); background:#f3f4f6; }
+    .fallback { width:40px; height:40px; border-radius:999px; display:flex; align-items:center; justify-content:center; background:#e5e7eb; color:#374151; font-weight:700; }
+    .step-main { flex:1; min-width:0; }
+    .step-top { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+    .name { font-weight:700; }
+    .date { color:#6b7280; font-size:12px; white-space:nowrap; }
+    .comments { color:#6b7280; font-size:13px; margin-top:2px; }
+
+    .status { font-size:12px; font-weight:700; }
+    .status.approved { color:#16a34a; }
+    .status.pending { color:#d97706; }
+    .status.review { color:#2563eb; }
+    .status.rejected { color:#ef4444; }
+    .status.delegated { color:#7c3aed; }
+
+    /* Snackbar */
+    #snackbar { visibility:hidden; min-width:240px; max-width:90vw; background:#333; color:#fff; text-align:center; border-radius:8px; padding:12px 16px; position:fixed; left:50%; transform:translateX(-50%); bottom:24px; z-index:1000 }
+    #snackbar.show { visibility:visible; animation: fadein .2s, fadeout .2s 3s }
+    @keyframes fadein { from{opacity:0} to{opacity:1} }
+    @keyframes fadeout { from{opacity:1} to{opacity:0} }
+  </style>
+</head>
+<body>
+  <header>
+    <button class="back" id="btnBack">← Back</button>
+    <div class="title">Workflow Status</div>
+  </header>
+
+  <div class="wrap">
+    <section class="card summary">
+      <div class="summary-row">
+        <div class="label">Request ID</div>
+        <div class="value" id="reqIdVal">—</div>
+      </div>
+      <div class="summary-row">
+        <div class="label">Request Type</div>
+        <div class="value" id="reqTypeVal">—</div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="muted" id="status">Loading workflow...</div>
+      <div id="timeline" class="timeline" style="display:none;"></div>
+    </section>
+  </div>
+
+  <div id="snackbar"></div>
+
+  <script>
+    const API_BASE = 'http://localhost:3001';
+    function getQuery(key){ const u=new URL(window.location.href); return u.searchParams.get(key); }
+    function showSnack(message){ const bar=document.getElementById('snackbar'); bar.textContent=message; bar.classList.add('show'); setTimeout(()=>bar.classList.remove('show'),3200); }
+    function fmtDate(d){ try{ const dt = new Date(d); if(!isNaN(dt)) return dt.toLocaleDateString(undefined, { day:'2-digit', month:'short', year:'numeric' }); }catch{} return d || '—'; }
+    function statusClass(s){ const t = String(s||'').toLowerCase(); if(t.includes('approve')) return 'approved'; if(t.includes('reject')) return 'rejected'; if(t.includes('review')) return 'review'; if(t.includes('pend')) return 'pending'; if(t.includes('deleg')) return 'delegated'; return ''; }
+
+    // Case-insensitive key picker with non-empty check
+    function pick(obj, candidates){
+      if (!obj) return undefined;
+      const map = {};
+      Object.keys(obj).forEach(k => { map[k.toLowerCase()] = k; });
+      for (const c of candidates){
+        const key = map[c.toLowerCase()];
+        if (key !== undefined){
+          const val = obj[key];
+          if (val !== undefined && val !== null && String(val) !== '') return val;
+        }
+      }
+      return undefined;
+    }
+
+    document.getElementById('btnBack').addEventListener('click', () => { if (history.length>1) history.back(); else window.location.href = '/mobile/home'; });
+
+    function renderTimeline(items){
+      const box = document.getElementById('timeline');
+      if (!Array.isArray(items) || items.length === 0){
+        document.getElementById('status').textContent = 'No workflow steps found';
+        box.style.display = 'none';
+        return;
+      }
+      const html = items.map((it) => {
+        // Prefer the timeline's actorEmpID column written by services to RequestTimelineTable
+        const empid = pick(it, ['actorEmpID','approverEmpID','empID','actorID','approverID']);
+        const name = pick(it, ['name','approverName','actorName']);
+        const display = empid || name || '—';
+        const comments = pick(it, ['comments','remarks','comment']) || '';
+        const dt = pick(it, ['actionDate','date','createdDate']) || '';
+        const status = pick(it, ['status','action']) || '';
+        const photo = pick(it, ['photo']) || '';
+        const avatar = photo ? `<img class="avatar" alt="avatar" src="data:image/png;base64,${photo}" onerror="this.remove();this.nextElementSibling.style.display='flex'">` : '';
+        const initials = (() => { const s = String(display).trim(); if (!s) return '?'; if (/\s/.test(s)) { return s.split(/\s+/).map(t=>t[0]).slice(0,2).join('').toUpperCase(); } return s.slice(-2).toUpperCase(); })();
+        return `
+          <div class="step">
+            <span class="dot"></span>
+            ${avatar}<div class="fallback" style="display:${photo? 'none':'flex'}">${initials}</div>
+            <div class="step-main">
+              <div class="step-top">
+                <div class="name">${display}</div>
+                <div class="date">${fmtDate(dt)}</div>
+              </div>
+              <div class="comments">${comments || ''}</div>
+              <div class="status ${statusClass(status)}">${status || ''}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+      box.innerHTML = html;
+      box.style.display = 'block';
+      document.getElementById('status').textContent = '';
+    }
+
+    async function loadTimeline(){
+      const reqid = getQuery('reqid');
+      const type = getQuery('type');
+      document.getElementById('reqIdVal').textContent = reqid || '—';
+      document.getElementById('reqTypeVal').textContent = type || '—';
+      if (!reqid){ document.getElementById('status').textContent = 'Missing reqid'; return; }
+      try{
+        const res = await fetch(`${API_BASE}/api/request/getRequestTimeline/${encodeURIComponent(reqid)}`, { credentials: 'include' });
+        if (!res.ok) throw new Error(`Failed to load (${res.status})`);
+        const data = await res.json();
+        const items = Array.isArray(data) ? data.slice() : [];
+        items.sort((a,b) => {
+          const da = new Date(a.actionDate || a.ActionDate || a.date || a.Date || a.CreatedDate || a.createdDate || 0).getTime();
+          const db = new Date(b.actionDate || b.ActionDate || b.date || b.Date || b.CreatedDate || b.createdDate || 0).getTime();
+          return da - db; // oldest first
+        });
+        renderTimeline(items);
+      }catch(e){ console.error(e); showSnack(`Error: ${e.message}`); document.getElementById('status').textContent = `Error: ${e.message}`; }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadTimeline);
+  </script>
+</body>
+</html>

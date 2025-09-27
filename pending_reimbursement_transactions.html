@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Reimbursement – Pending Approvals</title>
+  <style>
+    :root { --bg:#f7f9fc; --card:#fff; --text:#111827; --muted:#64748b; --border:#e5e7eb; --primary:#2563eb; --danger:#ef4444; --success:#16a34a; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background:var(--bg); color:var(--text); }
+    header { position:sticky; top:0; background:var(--card); border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 16px; z-index: 5; }
+    .title { font-weight:700; }
+    .back { background:transparent; border:1px solid var(--border); padding:6px 10px; border-radius:8px; cursor:pointer; }
+    .wrap { padding: 14px; display: grid; gap: 12px; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius: 12px; padding: 12px; }
+    .muted { color: var(--muted); font-size: 13px; }
+    .list { display:grid; gap:10px; }
+    .row { display:grid; grid-template-columns: 28px 1fr; gap:10px; align-items:start; padding:10px; border:1px solid var(--border); border-radius:10px; background:#fff; }
+    .row:hover { border-color:#c7d2fe; box-shadow:0 2px 8px rgba(0,0,0,0.05); }
+    .meta { font-size:12px; color:#475569; display:flex; flex-wrap:wrap; gap:10px; }
+    .topline { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:4px; }
+    .reqid { font-size:12px; color:#64748b; }
+    .emp { font-weight:600; }
+    .actions-bar { position: sticky; bottom: 0; background: var(--card); border-top:1px solid var(--border); padding:10px; display:flex; gap:8px; z-index: 10; }
+    .btn { padding:8px 12px; border-radius:8px; border:1px solid var(--border); background:#fff; cursor:pointer; }
+    .btn.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .btn.danger { background: var(--danger); color: #fff; border-color: var(--danger); }
+    .btn.success { background: var(--success); color: #fff; border-color: var(--success); }
+    .selectall { display:flex; align-items:center; gap:8px; }
+    #snackbar { visibility:hidden; min-width:240px; max-width:90vw; background:#333; color:#fff; text-align:center; border-radius:8px; padding:12px 16px; position:fixed; left:50%; transform:translateX(-50%); bottom:24px; z-index:1000 }
+    #snackbar.show { visibility:visible; animation: fadein .2s, fadeout .2s 3s }
+    @keyframes fadein { from{opacity:0} to{opacity:1} }
+    @keyframes fadeout { from{opacity:1} to{opacity:0} }
+
+    /* Delegate dialog */
+    .backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.35); display: none; align-items: center; justify-content: center; z-index: 50; }
+    .dialog { width: min(520px, 95vw); background: var(--card); border:1px solid var(--border); border-radius: 12px; padding: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+    .dialog h3 { margin: 6px 0 10px 0; }
+    .dlg-actions { display:flex; justify-content:flex-end; gap:8px; margin-top: 10px; }
+    .delegate-list { max-height: 45vh; overflow:auto; border:1px solid var(--border); border-radius:10px; padding:8px; display:grid; gap:8px; background:#fff; }
+    .delegate-item { display:flex; align-items:center; gap:10px; padding:6px; border:1px solid var(--border); border-radius:10px; }
+    .delegate-item img { width:32px; height:32px; border-radius:50%; object-fit:cover; border:1px solid var(--border); background:#f8fafc; }
+    .delegate-meta { font-size:12px; color:#475569; }
+    .dlg-input { width: 100%; padding: 8px 10px; border:1px solid var(--border); border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <header>
+    <button class="back" id="btnBack">← Back</button>
+    <div class="title">Reimbursement – Pending Approvals</div>
+    <label class="selectall"><input type="checkbox" id="chkAll" /> Select All</label>
+  </header>
+
+  <div class="wrap">
+    <section class="card">
+      <div class="muted" id="status">Loading pending reimbursement requests...</div>
+      <div class="list" id="list"></div>
+    </section>
+  </div>
+
+  <div class="actions-bar">
+    <button class="btn success" id="btnApprove">Approve</button>
+    <button class="btn danger" id="btnReject">Reject</button>
+    <button class="btn" id="btnDelegate">Delegate</button>
+    <button class="btn" id="btnChangeReq">Change Request</button>
+  </div>
+
+  <div id="snackbar"></div>
+
+  <!-- Delegate dialog -->
+  <div class="backdrop" id="dlgBackdrop" aria-hidden="true">
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlgTitle">
+      <h3 id="dlgTitle">Delegate Requests</h3>
+      <div style="margin-bottom:8px;">
+        <label for="delegateComment" class="muted">Comment (optional)</label>
+        <textarea id="delegateComment" class="dlg-input" rows="2" placeholder="Add a comment (optional)"></textarea>
+      </div>
+      <div class="muted" style="margin-bottom:6px;">Select an employee to delegate to:</div>
+      <div id="delegateList" class="delegate-list"></div>
+      <div class="dlg-actions">
+        <button class="btn" id="btnDlgCancel">Cancel</button>
+        <button class="btn primary" id="btnDlgConfirm" disabled>Delegate</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = 'http://localhost:3001';
+
+    document.getElementById('btnBack').addEventListener('click', () => {
+      window.location.href = '/mobile/home';
+    });
+
+    function showSnack(message){ const bar=document.getElementById('snackbar'); bar.textContent=message; bar.classList.add('show'); setTimeout(()=>bar.classList.remove('show'),3200); }
+
+    function fmtDate(s){ if(!s) return '—'; try{ return new Date(s).toISOString().slice(0,10);}catch{ return String(s);} }
+
+    function getVal(o, keys){ for(const k of keys){ if(o && o[k] != null) return o[k]; } return undefined; }
+
+    const selected = new Set();
+
+    function renderList(rows){
+      const list = document.getElementById('list');
+      const statusEl = document.getElementById('status');
+      if (!rows || rows.length === 0){ statusEl.textContent = 'No pending reimbursement requests'; list.innerHTML = ''; return; }
+      statusEl.textContent = '';
+      list.innerHTML = rows.map(r => {
+        const reqid = getVal(r, ['reimbursementReqID','ReimbursementID','reqID','ReqID','reqid']);
+        const type = getVal(r, ['Type','type']);
+        const amount = getVal(r, ['Amount','amount']);
+        const date = getVal(r, ['Date','date']);
+        const description = getVal(r, ['Description','description']);
+        const emp = getVal(r, ['EmpID','empID']);
+        const checked = selected.has(reqid) ? 'checked' : '';
+        return `
+          <div class="row" data-reqid="${encodeURIComponent(reqid || '')}">
+            <div><input type="checkbox" class="rowchk" ${checked} /></div>
+            <div>
+              <div class="topline">
+                <div><span class="emp">${emp || '—'}</span> • <span>${type || '—'}</span> • <span>$${amount || '—'}</span></div>
+                <div class="reqid">ReqID: ${reqid || '—'}</div>
+              </div>
+              <div class="meta">
+                <span>Date: <b>${fmtDate(date)}</b></span>
+                ${description ? `<span>Description: <b>${description}</b></span>` : ''}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      list.querySelectorAll('.row').forEach(el => {
+        const reqid = decodeURIComponent(el.getAttribute('data-reqid')||'');
+        const cb = el.querySelector('.rowchk');
+        cb.addEventListener('change', () => { if (cb.checked) selected.add(reqid); else selected.delete(reqid); syncSelectAll(); });
+        el.addEventListener('click', (e) => {
+          if (e.target && (e.target.tagName === 'INPUT')) return;
+          if (!reqid) return;
+          window.location.href = `/mobile/reimbursement/details?reqid=${encodeURIComponent(reqid)}`;
+        });
+      });
+
+      syncSelectAll();
+    }
+
+    function syncSelectAll(){
+      const allCb = document.getElementById('chkAll');
+      const items = Array.from(document.querySelectorAll('.row'));
+      const total = items.length;
+      const sel = selected.size;
+      allCb.checked = total > 0 && sel === total;
+      allCb.indeterminate = sel > 0 && sel < total;
+    }
+
+    document.getElementById('chkAll').addEventListener('change', (e) => {
+      const check = e.target.checked;
+      selected.clear();
+      document.querySelectorAll('.row').forEach(el => {
+        const reqid = decodeURIComponent(el.getAttribute('data-reqid')||'');
+        const cb = el.querySelector('.rowchk');
+        cb.checked = check;
+        if (check && reqid) selected.add(reqid);
+      });
+      syncSelectAll();
+    });
+
+    async function fetchPending(){
+      const statusEl = document.getElementById('status');
+      const list = document.getElementById('list');
+      statusEl.textContent = 'Loading pending reimbursement requests...';
+      list.innerHTML = '';
+      try{
+        const res = await fetch(`${API_BASE}/api/reimbursement/getPendingReimbursementRequests`, { credentials: 'include' });
+        if(!res.ok) throw new Error('Failed to load');
+        const rows = await res.json();
+        renderList(rows || []);
+      }catch(e){ console.error(e); statusEl.textContent = `Error: ${e.message}`; }
+    }
+
+    function ensureSelection(){ if (selected.size === 0) { showSnack('Select at least one request'); return false; } return true; }
+
+    async function doApproveReject(action){
+      if (!ensureSelection()) return;
+      const comment = prompt('Comment (optional)');
+      try{
+        for (const reqid of selected){
+          const res = await fetch(`${API_BASE}/api/reimbursement/approveRejectReimbursementRequest`, {
+            method: 'PATCH',
+            headers: { 'Content-Type':'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ reqid, action, comments: comment || null })
+          });
+          if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e?.error || `Failed to ${action} ${reqid}`); }
+        }
+        showSnack(action === 'approve' ? 'Approved' : 'Rejected');
+        selected.clear();
+        await fetchPending();
+      }catch(e){ console.error(e); showSnack(`Error: ${e.message}`); }
+    }
+
+    // Delegate flow
+    let selectedDelegateEmpID = null;
+
+    function closeDelegateDialog(){
+      document.getElementById('dlgBackdrop').style.display = 'none';
+      selectedDelegateEmpID = null;
+      document.getElementById('btnDlgConfirm').disabled = true;
+      document.getElementById('delegateComment').value = '';
+      document.getElementById('delegateList').innerHTML = '';
+    }
+
+    function renderDelegates(list){
+      const box = document.getElementById('delegateList');
+      if (!list || list.length === 0){ box.innerHTML = '<div class="muted">No delegates available</div>'; return; }
+      box.innerHTML = list.map(d => {
+        const img = d.photo ? `data:image/png;base64,${d.photo}` : '';
+        const safeName = d.name || d.Name || d.empid || d.EmpID || 'Employee';
+        const pos = d.position || d.Position || '';
+        const dep = d.department || d.Department || '';
+        const empid = d.empid || d.EmpID || '';
+        return `
+          <label class="delegate-item">
+            <input type="radio" name="delegateChoice" value="${empid}">
+            <img alt="photo" src="${img}" onerror="this.style.display='none'" />
+            <div>
+              <div style="font-weight:600;">${safeName} <span class="muted" style="font-weight:400;">(${empid})</span></div>
+              <div class="delegate-meta">${pos}${pos && dep ? ' • ' : ''}${dep}</div>
+            </div>
+          </label>
+        `;
+      }).join('');
+      box.querySelectorAll('input[name="delegateChoice"]').forEach(r => {
+        r.addEventListener('change', () => {
+          selectedDelegateEmpID = r.value;
+          document.getElementById('btnDlgConfirm').disabled = !selectedDelegateEmpID;
+        });
+      });
+    }
+
+    async function openDelegateDialog(){
+      document.getElementById('dlgBackdrop').style.display = 'flex';
+      document.getElementById('btnDlgConfirm').disabled = true;
+      document.getElementById('delegateList').innerHTML = '<div class="muted">Loading delegates...</div>';
+      try{
+        const res = await fetch(`${API_BASE}/api/request/getDelegates`, { credentials: 'include' });
+        if (!res.ok) throw new Error('Failed to load delegates');
+        const list = await res.json();
+        renderDelegates(list || []);
+      }catch(e){ console.error(e); document.getElementById('delegateList').innerHTML = `<div class=muted>Error: ${e.message}</div>`; }
+    }
+
+    async function doDelegate(){
+      if (!ensureSelection()) return;
+      await openDelegateDialog();
+    }
+
+    async function doChangeRequest(){
+      if (!ensureSelection()) return;
+      const comment = prompt('Comment (optional)');
+      try{
+        for (const reqid of selected){
+          const res = await fetch(`${API_BASE}/api/reimbursement/changeReimbursementApproval`, {
+            method: 'PATCH',
+            headers: { 'Content-Type':'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ reqid })
+          });
+          if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e?.error || `Failed to mark change request for ${reqid}`); }
+        }
+        showSnack('Marked as Change Request');
+        selected.clear();
+        await fetchPending();
+      }catch(e){ console.error(e); showSnack(`Error: ${e.message}`); }
+    }
+
+    document.getElementById('btnApprove').addEventListener('click', () => doApproveReject('approve'));
+    document.getElementById('btnReject').addEventListener('click', () => doApproveReject('reject'));
+    document.getElementById('btnDelegate').addEventListener('click', doDelegate);
+    document.getElementById('btnChangeReq').addEventListener('click', doChangeRequest);
+
+    // Delegate dialog buttons
+    document.getElementById('btnDlgCancel').addEventListener('click', closeDelegateDialog);
+    document.getElementById('btnDlgConfirm').addEventListener('click', async () => {
+      if (!selectedDelegateEmpID) return;
+      const comment = document.getElementById('delegateComment').value || null;
+      try{
+        for (const reqid of selected){
+          const res = await fetch(`${API_BASE}/api/reimbursement/delegateReimbursementRequest`, {
+            method: 'POST',
+            headers: { 'Content-Type':'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ reqid, newApproverEmpID: selectedDelegateEmpID, comment })
+          });
+          if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e?.error || `Failed to delegate ${reqid}`); }
+        }
+        closeDelegateDialog();
+        showSnack('Delegated');
+        selected.clear();
+        await fetchPending();
+      }catch(e){ console.error(e); showSnack(`Error: ${e.message}`); }
+    });
+
+    document.addEventListener('DOMContentLoaded', fetchPending);
+  </script>
+</body>
+</html>

@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Leave - Transactions</title>
+  <style>
+    :root { --bg:#f7f9fc; --card:#fff; --text:#222; --muted:#667085; --border:#e5e7eb; --primary:#2563eb; --accent:#10b981; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background:var(--bg); color:var(--text); }
+    header { position:sticky; top:0; background:var(--card); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; padding:12px 16px; }
+    .back { background:transparent; border:1px solid var(--border); padding:6px 10px; border-radius:8px; cursor:pointer; }
+    .title { font-weight:700; }
+    .wrap { padding:16px; display:grid; gap:12px; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; }
+    .muted { color:var(--muted); font-size:13px; }
+    .list { display:grid; gap:10px; }
+    .item { border:1px solid var(--border); border-radius:10px; padding:10px; background:#fff; cursor:pointer; }
+    .item:hover { border-color:#c7d2fe; box-shadow:0 2px 8px rgba(0,0,0,0.05) }
+    .row { display:flex; justify-content:space-between; gap:8px; }
+    .fab { position: fixed; right: 16px; bottom: 16px; background: var(--primary); color: #fff; border: 0; width: 52px; height: 52px; border-radius: 999px; font-size: 28px; line-height: 0; cursor: pointer; box-shadow:0 4px 16px rgba(0,0,0,0.2) }
+    .form-card .field { display: grid; gap: 6px; margin-bottom: 10px; }
+    .form-card label { font-size: 13px; color: #475569; }
+    .form-card input[type="date"], .form-card select, .form-card textarea, .form-card input[type="file"] { padding: 8px; border: 1px solid var(--border); border-radius: 8px; font: inherit; }
+    .form-card textarea { min-height: 72px; resize: vertical; }
+    .actions { display:flex; gap: 8px; margin-top: 8px; }
+    .btn { padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); cursor: pointer; background: #fff; }
+    .btn.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .btn.ghost { background: transparent; }
+    #snackbar { visibility: hidden; min-width: 240px; max-width: 90vw; background-color: #333; color: #fff; text-align: center; border-radius: 8px; padding: 12px 16px; position: fixed; left: 50%; transform: translateX(-50%); bottom: 24px; z-index: 1000; }
+    #snackbar.show { visibility: visible; animation: fadein 0.2s, fadeout 0.2s 3s; }
+    @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes fadeout { from { opacity: 1; } to { opacity: 0; } }
+  </style>
+</head>
+<body>
+  <header>
+    <button class="back" id="btnBack">← Back</button>
+    <div class="title">Leave – Transactions</div>
+  </header>
+
+  <div class="wrap">
+    <section class="card">
+      <div class="muted" id="status">Loading leave transactions...</div>
+      <div class="list" id="list"></div>
+    </section>
+    <section class="card form-card" id="leaveForm" style="display:none;">
+      <div class="muted">New Leave Request</div>
+      <div class="field">
+        <label for="leaveType">Leave Type</label>
+        <select id="leaveType" name="Type"></select>
+        <div id="leaveBalance" class="muted"></div>
+      </div>
+      <div class="field">
+        <label for="fromDate">Start Date</label>
+        <input type="date" id="fromDate" name="FromDate" />
+      </div>
+      <div class="field">
+        <label for="toDate">End Date</label>
+        <input type="date" id="toDate" name="ToDate" />
+      </div>
+      <div class="field">
+        <label for="description">Reason</label>
+        <textarea id="description" name="Description" placeholder="Reason"></textarea>
+      </div>
+      <div class="field">
+        <label for="attachment">Attachment (optional)</label>
+        <input type="file" id="attachment" name="attachment" accept="application/pdf,image/*" />
+      </div>
+      <div class="actions">
+        <button class="btn primary" id="btnSubmitLeave">Submit</button>
+        <button class="btn" id="btnDraftLeave">Save Draft</button>
+        <button class="btn ghost" id="btnCancelLeave">Cancel</button>
+      </div>
+    </section>
+  </div>
+
+  <button class="fab" id="btnCreate" title="New Leave">+</button>
+  <div id="snackbar"></div>
+
+  <script>
+    const API_BASE = 'http://localhost:3001';
+    const list = document.getElementById('list');
+    const statusEl = document.getElementById('status');
+
+    document.getElementById('btnBack').addEventListener('click', () => {
+      window.location.href = '/mobile/home';
+    });
+
+    // Snackbar helper
+    function showSnack(message) {
+      const bar = document.getElementById('snackbar');
+      bar.textContent = message;
+      bar.classList.add('show');
+      setTimeout(() => bar.classList.remove('show'), 3200);
+    }
+
+    // Form helpers
+    function daysBetweenInclusive(fromStr, toStr) {
+      if (!fromStr || !toStr) return 0;
+      const from = new Date(fromStr + 'T00:00:00');
+      const to = new Date(toStr + 'T00:00:00');
+      if (isNaN(from) || isNaN(to)) return 0;
+      return Math.ceil((to - from) / (1000*60*60*24)) + 1;
+    }
+
+    let leaveTypesLoaded = false;
+    let leaveTypeMap = {};
+    async function loadLeaveTypes() {
+      if (leaveTypesLoaded) return;
+      try {
+        const res = await fetch(`${API_BASE}/api/leave/getLeaveRequestTypes`, { credentials: 'include' });
+        if (!res.ok) throw new Error('Failed to load leave types');
+        const types = await res.json(); // [{ TypeCode, TypeName, RemainingDays }]
+        const sel = document.getElementById('leaveType');
+        sel.innerHTML = '';
+        leaveTypeMap = {};
+        if (Array.isArray(types) && types.length) {
+          types.forEach(t => {
+            const name = t?.TypeName ?? '';
+            const rem = Number.isFinite(+t?.RemainingDays) ? +t.RemainingDays : undefined;
+            if (name) {
+              leaveTypeMap[name] = { remaining: rem };
+              const opt = document.createElement('option');
+              opt.value = name;
+              opt.textContent = name + (rem != null ? ` (Remaining: ${rem})` : '');
+              sel.appendChild(opt);
+            }
+          });
+        } else {
+          const opt = document.createElement('option');
+          opt.value = '';
+          opt.textContent = 'No types available';
+          sel.appendChild(opt);
+        }
+        leaveTypesLoaded = true;
+        updateBalanceDisplay();
+      } catch (e) { console.error(e); showSnack(`Error: ${e.message}`); }
+    }
+
+    function updateBalanceDisplay() {
+      const type = document.getElementById('leaveType').value;
+      const fromDate = document.getElementById('fromDate').value;
+      const toDate = document.getElementById('toDate').value;
+      const info = leaveTypeMap[type] || {};
+      const rem = info.remaining;
+      const requested = fromDate && toDate ? daysBetweenInclusive(fromDate, toDate) : 0;
+      const balEl = document.getElementById('leaveBalance');
+      const submitBtn = document.getElementById('btnSubmitLeave');
+      const draftBtn = document.getElementById('btnDraftLeave');
+      if (rem != null) {
+        balEl.textContent = `Remaining: ${rem} day(s). Requested: ${requested || 0}`;
+        const invalid = requested > rem || requested <= 0 || (fromDate && toDate && (new Date(fromDate) > new Date(toDate)));
+        submitBtn.disabled = invalid;
+        draftBtn.disabled = invalid;
+        if (invalid && requested > rem) balEl.textContent += ' — exceeds remaining balance';
+      } else {
+        balEl.textContent = '';
+        submitBtn.disabled = false;
+        draftBtn.disabled = false;
+      }
+    }
+
+    function showForm() {
+      document.getElementById('leaveForm').style.display = 'block';
+      const today = new Date().toISOString().slice(0,10);
+      if (!document.getElementById('fromDate').value) document.getElementById('fromDate').value = today;
+      if (!document.getElementById('toDate').value) document.getElementById('toDate').value = today;
+      loadLeaveTypes();
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    }
+
+    function hideForm() {
+      const form = document.getElementById('leaveForm');
+      form.style.display = 'none';
+      document.getElementById('leaveType').selectedIndex = 0;
+      document.getElementById('fromDate').value = '';
+      document.getElementById('toDate').value = '';
+      document.getElementById('description').value = '';
+      document.getElementById('attachment').value = '';
+    }
+
+    async function submitOrDraft(kind) {
+      const type = document.getElementById('leaveType').value;
+      const fromDate = document.getElementById('fromDate').value;
+      const toDate = document.getElementById('toDate').value;
+      const description = document.getElementById('description').value;
+      const file = document.getElementById('attachment').files[0];
+
+      if (!type || !fromDate || !toDate) { showSnack('Please fill Leave Type, Start Date and End Date'); return; }
+      const requested = daysBetweenInclusive(fromDate, toDate);
+      if (new Date(fromDate) > new Date(toDate)) { showSnack('Start Date cannot be after End Date'); return; }
+      const rem = (leaveTypeMap[type] || {}).remaining;
+      if (rem != null && requested > rem) { showSnack(`Requested ${requested} day(s) exceeds remaining ${rem}`); return; }
+
+      const fd = new FormData();
+      fd.append('Type', type);
+      fd.append('FromDate', fromDate);
+      fd.append('ToDate', toDate);
+      fd.append('Description', description || '');
+      if (file) fd.append('attachment', file);
+
+      const url = kind === 'submit' ? `${API_BASE}/api/leave/submitLeaveRequest` : `${API_BASE}/api/leave/draftSaveLeaveRequest`;
+      try {
+        const res = await fetch(url, { method: 'POST', body: fd, credentials: 'include' });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data?.error || 'Request failed');
+        showSnack(kind === 'submit' ? 'Leave submitted successfully' : 'Leave draft saved');
+        hideForm();
+        loadTransactions();
+      } catch (e) { console.error(e); showSnack(`Error: ${e.message}`); }
+    }
+
+    document.getElementById('btnCreate').addEventListener('click', showForm);
+    document.getElementById('btnCancelLeave').addEventListener('click', (e) => { e.preventDefault(); hideForm(); });
+    document.getElementById('btnSubmitLeave').addEventListener('click', (e) => { e.preventDefault(); submitOrDraft('submit'); });
+    document.getElementById('btnDraftLeave').addEventListener('click', (e) => { e.preventDefault(); submitOrDraft('draft'); });
+    document.getElementById('leaveType').addEventListener('change', updateBalanceDisplay);
+    document.getElementById('fromDate').addEventListener('change', updateBalanceDisplay);
+    document.getElementById('toDate').addEventListener('change', updateBalanceDisplay);
+
+    function fmtDate(s) {
+      if (!s) return '—';
+      try { return new Date(s).toISOString().slice(0,10); } catch { return String(s); }
+    }
+
+    function itemTemplate(r) {
+      const from = fmtDate(r.fromDate || r.FromDate);
+      const to = fmtDate(r.toDate || r.ToDate);
+      const reqid = r.reqID || r.ReqID || r.reqid || r.requestId || r.requestID;
+      const type = r.type || r.Type || '—';
+      const status = r.status || r.Status || '—';
+      return `
+        <div class="item" data-reqid="${encodeURIComponent(reqid)}">
+          <div class="row"><div><b>${type}</b></div><div class="muted">${status}</div></div>
+          <div class="muted">${from} → ${to}</div>
+          <div class="muted">ReqID: ${reqid || '—'}</div>
+        </div>
+      `;
+    }
+
+    async function loadTransactions() {
+      statusEl.textContent = 'Loading leave transactions...';
+      list.innerHTML = '';
+      try {
+        const res = await fetch(`${API_BASE}/api/leave/getLeaveRequestTransactions`, { credentials: 'include' });
+        if (!res.ok) throw new Error('Failed to load');
+        const rows = await res.json();
+        if (!rows || rows.length === 0) {
+          statusEl.textContent = 'No leave transactions';
+          return;
+        }
+        statusEl.textContent = '';
+        list.innerHTML = rows.map(itemTemplate).join('');
+        list.querySelectorAll('.item').forEach(el => {
+          el.addEventListener('click', () => {
+            const reqid = el.getAttribute('data-reqid');
+            if (!reqid) return;
+            window.location.href = `/mobile/leave/details?reqid=${reqid}`;
+          });
+        });
+      } catch (e) {
+        console.error(e);
+        statusEl.textContent = `Error: ${e.message}`;
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadTransactions);
+  </script>
+</body>
+</html>

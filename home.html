@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mobile Demo - Home</title>
+  <style>
+    :root {
+      --bg: #f7f9fc;
+      --card: #ffffff;
+      --text: #222;
+      --muted: #667085;
+      --border: #e5e7eb;
+      --primary: #2563eb;
+      --primary-contrast: #fff;
+      --accent: #f97316;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;
+      background: var(--bg);
+      color: var(--text);
+    }
+    header.appbar {
+      position: sticky;
+      top: 0;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      z-index: 10;
+    }
+    .title { font-weight: 700; }
+    .notif-btn {
+      background: var(--accent);
+      color: var(--primary-contrast);
+      border: 0;
+      padding: 8px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .wrap { padding: 16px; display: grid; gap: 16px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.05);
+    }
+    .profile {
+      display: grid;
+      grid-template-columns: 72px 1fr;
+      gap: 12px;
+      align-items: center;
+    }
+    .profile img {
+      width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border);
+      background: #fafafa;
+    }
+    .muted { color: var(--muted); font-size: 13px; }
+    .big-actions {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+    .big-actions button {
+      background: var(--primary);
+      color: var(--primary-contrast);
+      border: 0;
+      padding: 14px;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .sub-actions {
+      display: none; /* toggled */
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+    .sub-actions button {
+      background: #eef2ff;
+      color: #1e3a8a;
+      border: 1px solid #dbeafe;
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 14px;
+      cursor: pointer;
+      text-align: left;
+    }
+    .section-title { font-weight: 700; margin-bottom: 8px; }
+
+    /* Notifications panel */
+    .notif-panel {
+      display: none;
+      position: fixed;
+      inset: auto 12px 12px 12px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+      padding: 12px;
+      max-height: 45vh;
+      overflow: auto;
+      z-index: 20;
+    }
+    .notif-list { display: grid; gap: 8px; }
+    .notif-item { padding: 10px; border: 1px solid var(--border); border-radius: 10px; }
+    .notif-empty { color: var(--muted); font-size: 13px; }
+
+    .row { display: grid; gap: 6px; }
+  </style>
+</head>
+<body>
+  <header class="appbar">
+    <div class="title">Mobile Demo – Home</div>
+    <button id="btnNotifications" class="notif-btn">Notifications</button>
+  </header>
+
+  <div class="wrap">
+    <!-- Profile Summary -->
+    <section class="card">
+      <div class="section-title">Profile</div>
+      <div class="profile">
+        <img id="profilePhoto" alt="Profile photo" src="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Crect width='100%25' height='100%25' fill='%23f3f4f6'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-family='Arial' font-size='12'%3ENo Photo%3C/text%3E%3C/svg%3E" />
+        <div class="row">
+          <div id="profileName" style="font-weight:700">—</div>
+          <div id="profilePosition" class="muted">—</div>
+          <div id="profileEmp" class="muted">—</div>
+          <div id="profileStatus" class="muted"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Latest Check-in/Checkout -->
+    <section class="card">
+      <div class="section-title">Latest Check-in / Check-out</div>
+      <div class="row">
+        <div class="muted" id="latestDate">Date: —</div>
+        <div class="muted" id="latestCheckIn">Check-in: —</div>
+        <div class="muted" id="latestCheckOut">Check-out: —</div>
+        <div id="attendanceStatus" class="muted"></div>
+      </div>
+    </section>
+
+    <!-- Big options -->
+    <section class="card">
+      <div class="section-title">Actions</div>
+      <div class="big-actions">
+        <button data-section="requests">Requests</button>
+        <button data-section="teams">Teams</button>
+        <button data-section="approvals">Approvals</button>
+        <button data-section="onbehalf">Request on Behalf</button>
+        <button data-section="profile">Profile</button>
+      </div>
+    </section>
+
+    <!-- Sub-sections -->
+    <section class="card" id="section-requests">
+      <div class="section-title">Requests</div>
+      <div class="sub-actions">
+        <button id="btnLeaveRequests">Leave</button>
+        <button id="btnExcuseRequests">Excuse</button>
+        <button id="btnDocumentRequests">Document</button>
+        <button id="btnReimbursementRequests">Reimbursement</button>
+        <button id="btnFlightRequests">Flight Ticket</button>
+        <button id="btnBusinessRequests">Business Trip</button>
+      </div>
+    </section>
+
+    <section class="card" id="section-teams">
+      <div class="section-title">Teams</div>
+      <div class="sub-actions">
+        <button id="btnTeamHierarchy">Hierarchy</button>
+        <button id="btnTeamCalendar">Calendar</button>
+      </div>
+    </section>
+
+    <section class="card" id="section-approvals">
+      <div class="section-title">Approvals</div>
+      <div class="sub-actions">
+        <button id="btnLeaveApproval">Leave Approval</button>
+        <button id="btnExcuseApproval">Excuse Approval</button>
+        <button id="btnDocumentApproval">Document Approval</button>
+        <button id="btnReimbApproval">Reimbursement Approval</button>
+        <button id="btnFlightApproval">Flight Ticket Approval</button>
+        <button id="btnBusinessApproval">Business Trip Approval</button>
+      </div>
+    </section>
+
+    <section class="card" id="section-onbehalf">
+      <div class="section-title">Request on Behalf</div>
+      <div class="sub-actions">
+        <button id="btnOBLeave">Request Leave on Behalf</button>
+        <button id="btnOBExcuse">Request Excuse on Behalf</button>
+        <button id="btnOBDocument">Request Document on Behalf</button>
+        <button id="btnOBReimbursement">Request Reimbursement on Behalf</button>
+        <button id="btnOBFlight">Request Flight Ticket on Behalf</button>
+        <button id="btnOBBusiness">Request Business Trip on Behalf</button>
+      </div>
+    </section>
+
+    <section class="card" id="section-profile">
+      <div class="section-title">Profile Options</div>
+      <div class="sub-actions">
+        <button id="btnProfilePage">Profile</button>
+        <button id="btnProfilePayslip">Payslip</button>
+        <button id="btnProfileCheckin">Check-in</button>
+        <button id="btnProfileCalendar">Calendar</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- Notifications panel -->
+  <div class="notif-panel" id="notifPanel">
+    <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom:8px;">
+      <div style="font-weight:700">Notifications</div>
+      <button id="btnCloseNotif" class="notif-btn" style="background:#334155">Close</button>
+    </div>
+    <div id="notifList" class="notif-list"></div>
+  </div>
+
+  <script>
+    const API_BASE = 'http://localhost:3001';
+    // Helper to hide all sub-sections
+    function hideAllSections() {
+      document.querySelectorAll('.card .sub-actions').forEach(el => el.style.display = 'none');
+    }
+
+    function showSection(id) {
+      hideAllSections();
+      const sec = document.querySelector(`#section-${id} .sub-actions`);
+      if (sec) sec.style.display = 'grid';
+      window.scrollTo({ top: document.querySelector(`#section-${id}`).offsetTop - 60, behavior: 'smooth' });
+    }
+
+    // Load Profile Summary
+    async function loadProfile() {
+      try {
+        document.getElementById('profileStatus').textContent = 'Loading profile...';
+        const res = await fetch(`${API_BASE}/api/profile/getProfileSummary`, { credentials: 'include' });
+        if (!res.ok) throw new Error('Failed to load profile summary');
+        const data = await res.json();
+        document.getElementById('profileName').textContent = data?.Name || data?.name || '—';
+        document.getElementById('profilePosition').textContent = data?.Position || data?.position || '—';
+        const empTxt = ['EmpID', 'EmpId', 'empid'].map(k => data?.[k]).find(Boolean) || '—';
+        document.getElementById('profileEmp').textContent = `EmpID: ${empTxt}`;
+        // Photo loaded separately
+        document.getElementById('profileStatus').textContent = '';
+      } catch (e) {
+        console.error(e);
+        document.getElementById('profileStatus').textContent = `Profile load failed: ${e.message}`;
+      }
+    }
+
+    async function loadProfilePhoto() {
+      try {
+        document.getElementById('profileStatus').textContent = 'Loading photo...';
+        const res = await fetch(`${API_BASE}/api/profile/getPhoto`, { credentials: 'include' });
+        if (res.status === 404) {
+          document.getElementById('profileStatus').textContent = 'No profile photo';
+          return;
+        }
+        if (!res.ok) throw new Error(`Photo load failed (${res.status})`);
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const img = document.getElementById('profilePhoto');
+        img.src = url;
+        document.getElementById('profileStatus').textContent = '';
+      } catch (e) {
+        console.error(e);
+        document.getElementById('profileStatus').textContent = `Photo error: ${e.message}`;
+      }
+    }
+
+    // Load Latest Check-in/Checkout
+    async function loadLatestAttendance() {
+      try {
+        document.getElementById('attendanceStatus').textContent = 'Loading attendance...';
+        const res = await fetch(`${API_BASE}/api/attendance/getCheckinCheckoutTime`, { credentials: 'include' });
+        if (res.status === 204) {
+          document.getElementById('attendanceStatus').textContent = 'No recent attendance';
+          return;
+        }
+        if (!res.ok) throw new Error('Failed to load attendance');
+        const data = await res.json();
+        const hasAny = data && (data.Date || data.CheckIn || data.CheckOut);
+        document.getElementById('latestDate').textContent = `Date: ${data?.Date || '—'}`;
+        document.getElementById('latestCheckIn').textContent = `Check-in: ${data?.CheckIn || '—'}`;
+        document.getElementById('latestCheckOut').textContent = `Check-out: ${data?.CheckOut || '—'}`;
+        document.getElementById('attendanceStatus').textContent = hasAny ? '' : 'No recent attendance';
+      } catch (e) {
+        console.error(e);
+        document.getElementById('attendanceStatus').textContent = `Attendance load failed: ${e.message}`;
+      }
+    }
+
+    // Notifications
+    async function loadNotifications() {
+      const list = document.getElementById('notifList');
+      list.innerHTML = '<div class="muted">Loading...</div>';
+      try {
+        const res = await fetch(`${API_BASE}/api/notification/getNotifications`, { credentials: 'include' });
+        if (!res.ok) throw new Error('Failed to load notifications');
+        const items = await res.json();
+        if (!items || items.length === 0) {
+          list.innerHTML = '<div class="notif-empty">No notifications</div>';
+          return;
+        }
+        list.innerHTML = items.map(n => `
+          <div class="notif-item">
+            <div style="font-weight:700; margin-bottom:4px;">${(n.title || 'Notification')}</div>
+            <div class="muted">${(n.message || '')}</div>
+          </div>
+        `).join('');
+      } catch (e) {
+        console.error(e);
+        list.innerHTML = '<div class="notif-empty">Failed to load notifications</div>';
+      }
+    }
+
+    // Event bindings
+    document.addEventListener('DOMContentLoaded', () => {
+      // Load initial data
+      loadProfile();
+      loadLatestAttendance();
+      loadProfilePhoto();
+
+      // Big actions toggle
+      document.querySelectorAll('.big-actions button').forEach(btn => {
+        btn.addEventListener('click', () => showSection(btn.dataset.section));
+      });
+
+      // Requests -> Leave navigation
+      const leaveBtn = document.getElementById('btnLeaveRequests');
+      if (leaveBtn) {
+        leaveBtn.addEventListener('click', () => {
+          window.location.href = '/mobile/leave/transactions';
+        });
+      }
+
+      // Requests -> Document navigation
+      const docBtn = document.getElementById('btnDocumentRequests');
+      if (docBtn) {
+        docBtn.addEventListener('click', () => {
+          window.location.href = '/mobile/document/transactions';
+        });
+      }
+
+      // Requests -> Excuse navigation
+      const excuseBtn = document.getElementById('btnExcuseRequests');
+      if (excuseBtn) {
+        excuseBtn.addEventListener('click', () => {
+          window.location.href = '/mobile/excuse/transactions';
+        });
+      }
+
+      // Requests -> Reimbursement navigation
+      const reimbBtn = document.getElementById('btnReimbursementRequests');
+      if (reimbBtn) {
+        reimbBtn.addEventListener('click', () => {
+          window.location.href = '/mobile/reimbursement/transactions';
+        });
+      }
+
+      // Requests -> Flight Ticket navigation
+      const flightBtn = document.getElementById('btnFlightRequests');
+      if (flightBtn) {
+        flightBtn.addEventListener('click', () => {
+          window.location.href = '/mobile/flight/transactions';
+        });
+      }
+
+      // Requests -> Business Trip navigation
+      const bizBtn = document.getElementById('btnBusinessRequests');
+      if (bizBtn) {
+        bizBtn.addEventListener('click', () => {
+          window.location.href = '/mobile/business/transactions';
+        });
+      }
+
+      // Teams -> Hierarchy navigation
+      const teamHierBtn = document.getElementById('btnTeamHierarchy');
+      if (teamHierBtn) {
+        teamHierBtn.addEventListener('click', () => {
+          window.location.href = '/mobile/team/hierarchy';
+        });
+      }
+
+      // Teams -> Calendar navigation
+      const teamCalBtn = document.getElementById('btnTeamCalendar');
+      if (teamCalBtn) {
+        teamCalBtn.addEventListener('click', () => {
+          window.location.href = '/mobile/team/calendar';
+        });
+      }
+
+      // On-Behalf navigation
+      const obLeave = document.getElementById('btnOBLeave');
+      if (obLeave) obLeave.addEventListener('click', () => { window.location.href = '/mobile/onbehalf/leave'; });
+      const obExcuse = document.getElementById('btnOBExcuse');
+      if (obExcuse) obExcuse.addEventListener('click', () => { window.location.href = '/mobile/onbehalf/excuse'; });
+      const obDoc = document.getElementById('btnOBDocument');
+      if (obDoc) obDoc.addEventListener('click', () => { window.location.href = '/mobile/onbehalf/document'; });
+      const obReimb = document.getElementById('btnOBReimbursement');
+      if (obReimb) obReimb.addEventListener('click', () => { window.location.href = '/mobile/onbehalf/reimbursement'; });
+      const obFlight = document.getElementById('btnOBFlight');
+      if (obFlight) obFlight.addEventListener('click', () => { window.location.href = '/mobile/onbehalf/flight'; });
+      const obBiz = document.getElementById('btnOBBusiness');
+      if (obBiz) obBiz.addEventListener('click', () => { window.location.href = '/mobile/onbehalf/business'; });
+
+      // Approvals -> Leave navigation
+      const leaveApprovalBtn = document.getElementById('btnLeaveApproval');
+      if (leaveApprovalBtn) {
+        leaveApprovalBtn.addEventListener('click', () => {
+          window.location.href = '/mobile/approvals/leave/pending';
+        });
+      }
+
+      // Approvals -> Excuse navigation
+      const excuseApprovalBtn = document.getElementById('btnExcuseApproval');
+      if (excuseApprovalBtn) {
+        excuseApprovalBtn.addEventListener('click', () => {
+          window.location.href = '/mobile/approvals/excuse/pending';
+        });
+      }
+
+      // Approvals -> Document navigation
+      const docApprovalBtn = document.getElementById('btnDocumentApproval');
+      if (docApprovalBtn) {
+        docApprovalBtn.addEventListener('click', () => {
+          window.location.href = '/mobile/approvals/document/pending';
+        });
+      }
+
+      // Approvals -> Reimbursement navigation
+      const reimbApprovalBtn = document.getElementById('btnReimbApproval');
+      if (reimbApprovalBtn) {
+        reimbApprovalBtn.addEventListener('click', () => {
+          window.location.href = '/mobile/approvals/reimbursement/pending';
+        });
+      }
+
+      // Approvals -> Flight Ticket navigation
+      const flightApprovalBtn = document.getElementById('btnFlightApproval');
+      if (flightApprovalBtn) {
+        flightApprovalBtn.addEventListener('click', () => {
+          window.location.href = '/mobile/approvals/flight/pending';
+        });
+      }
+
+      // Approvals -> Business Trip navigation
+      const bizApprovalBtn = document.getElementById('btnBusinessApproval');
+      if (bizApprovalBtn) {
+        bizApprovalBtn.addEventListener('click', () => {
+          window.location.href = '/mobile/approvals/business/pending';
+        });
+      }
+
+      // Profile section navigation
+      const profilePgBtn = document.getElementById('btnProfilePage');
+      if (profilePgBtn) profilePgBtn.addEventListener('click', () => { window.location.href = '/mobile/profile'; });
+      const profileCalBtn = document.getElementById('btnProfileCalendar');
+      if (profileCalBtn) profileCalBtn.addEventListener('click', () => { window.location.href = '/mobile/calendar'; });
+      const profileChkBtn = document.getElementById('btnProfileCheckin');
+      if (profileChkBtn) profileChkBtn.addEventListener('click', () => { window.location.href = '/mobile/checkin'; });
+
+      // Notifications panel
+      const panel = document.getElementById('notifPanel');
+      document.getElementById('btnNotifications').addEventListener('click', () => {
+        panel.style.display = 'block';
+        loadNotifications();
+      });
+      document.getElementById('btnCloseNotif').addEventListener('click', () => {
+        panel.style.display = 'none';
+      });
+    });
+  </script>
+</body>
+</html>

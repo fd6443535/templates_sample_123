@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Flight Ticket - Transactions</title>
+  <style>
+    :root { --bg:#f7f9fc; --card:#fff; --text:#222; --muted:#667085; --border:#e5e7eb; --primary:#2563eb; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background:var(--bg); color:var(--text); }
+    header { position:sticky; top:0; background:var(--card); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; padding:12px 16px; }
+    .back { background:transparent; border:1px solid var(--border); padding:6px 10px; border-radius:8px; cursor:pointer; }
+    .title { font-weight:700; }
+    .wrap { padding:16px; display:grid; gap:12px; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; }
+    .muted { color:var(--muted); font-size:13px; }
+    .list { display:grid; gap:10px; }
+    .item { border:1px solid var(--border); border-radius:10px; padding:10px; background:#fff; cursor:pointer; }
+    .item:hover { border-color:#c7d2fe; box-shadow:0 2px 8px rgba(0,0,0,0.05) }
+    .row { display:flex; justify-content:space-between; gap:8px; }
+    .fab { position: fixed; right: 16px; bottom: 16px; background: var(--primary); color: #fff; border: 0; width: 52px; height: 52px; border-radius: 999px; font-size: 28px; line-height: 0; cursor: pointer; box-shadow:0 4px 16px rgba(0,0,0,0.2) }
+    .form-card .field { display:grid; gap:6px; margin-bottom:10px; }
+    .form-card label { font-size:13px; color:#475569; }
+    .form-card input[type="date"], .form-card input[type="time"], .form-card input[type="text"], .form-card select, .form-card textarea, .form-card input[type="file"] { padding:8px; border:1px solid var(--border); border-radius:8px; font:inherit; }
+    .form-card textarea { min-height:72px; resize:vertical; }
+    .actions { display:flex; gap:8px; margin-top:8px; }
+    .btn { padding:8px 12px; border-radius:8px; border:1px solid var(--border); cursor:pointer; background:#fff; }
+    .btn.primary { background:var(--primary); color:#fff; border-color:var(--primary); }
+    .btn.ghost { background:transparent; }
+    #snackbar { visibility:hidden; min-width:240px; max-width:90vw; background:#333; color:#fff; text-align:center; border-radius:8px; padding:12px 16px; position:fixed; left:50%; transform:translateX(-50%); bottom:24px; z-index:1000 }
+    #snackbar.show { visibility:visible; animation: fadein .2s, fadeout .2s 3s }
+    @keyframes fadein { from{opacity:0} to{opacity:1} }
+    @keyframes fadeout { from{opacity:1} to{opacity:0} }
+    .pill { display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border:1px solid var(--border); border-radius:999px; background:#fff; font-size:13px; }
+    .pill .x { cursor:pointer; color:#ef4444; font-weight:700; }
+  </style>
+</head>
+<body>
+  <header>
+    <button class="back" id="btnBack">← Back</button>
+    <div class="title">Flight Ticket – Transactions</div>
+  </header>
+
+  <div class="wrap">
+    <section class="card">
+      <div class="muted" id="status">Loading flight ticket transactions...</div>
+      <div class="list" id="list"></div>
+    </section>
+    <section class="card form-card" id="ftForm" style="display:none;">
+      <div class="muted">New Flight Ticket Request</div>
+      <div class="field">
+        <label for="fromLocation">From</label>
+        <input type="text" id="fromLocation" placeholder="City / Airport" />
+      </div>
+      <div class="field">
+        <label for="toLocation">To</label>
+        <input type="text" id="toLocation" placeholder="City / Airport" />
+      </div>
+      <div class="field">
+        <label for="ftClass">Preferred Class</label>
+        <select id="ftClass">
+          <option>Economy</option>
+          <option>Premium</option>
+          <option>Business</option>
+          <option>First</option>
+          <option>Any</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Departure</label>
+        <div style="display:flex; gap:8px;">
+          <input type="date" id="depDate" />
+          <input type="time" id="depTime" />
+        </div>
+      </div>
+      <div class="field">
+        <label><input type="checkbox" id="isReturn" /> Return ticket</label>
+        <div id="returnFields" style="display:none; margin-top:6px;">
+          <div style="display:flex; gap:8px;">
+            <input type="date" id="retDate" />
+            <input type="time" id="retTime" />
+          </div>
+        </div>
+      </div>
+      <div class="field">
+        <label>Passengers</label>
+        <div id="passengersBox" style="display:grid; gap:6px;">
+          <div id="passengersList"></div>
+          <div style="display:grid; gap:6px; border:1px dashed var(--border); padding:8px; border-radius:8px;">
+            <div style="display:grid; gap:6px; grid-template-columns: repeat(2, minmax(0,1fr));">
+              <input type="text" id="pName" placeholder="Name" />
+              <input type="text" id="pRelation" placeholder="Relation" />
+              <input type="text" id="pPassport" placeholder="Passport Number" />
+              <input type="date" id="pPassportExpiry" placeholder="Passport Expiry" />
+            </div>
+            <div>
+              <button class="btn" id="btnAddPassenger">Add Passenger</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="field">
+        <label for="purpose">Reason</label>
+        <textarea id="purpose" placeholder="Purpose of travel"></textarea>
+      </div>
+      <div class="field">
+        <label for="ftAttachment">Attachment (optional)</label>
+        <input type="file" id="ftAttachment" accept="application/pdf,image/*" />
+      </div>
+      <div class="actions">
+        <button class="btn primary" id="btnSubmitFT">Submit</button>
+        <button class="btn" id="btnDraftFT">Save Draft</button>
+        <button class="btn ghost" id="btnCancelFT">Cancel</button>
+      </div>
+    </section>
+  </div>
+
+  <button class="fab" id="btnCreate" title="New Flight Ticket">+</button>
+  <div id="snackbar"></div>
+
+  <script>
+    const API_BASE = 'http://localhost:3001';
+    const list = document.getElementById('list');
+    const statusEl = document.getElementById('status');
+
+    document.getElementById('btnBack').addEventListener('click', () => {
+      window.location.href = '/mobile/home';
+    });
+    // Snackbar helper
+    function showSnack(message){
+      const bar = document.getElementById('snackbar');
+      bar.textContent = message;
+      bar.classList.add('show');
+      setTimeout(() => bar.classList.remove('show'), 3200);
+    }
+
+    function combineDateTime(d, t){
+      if (!d) return '';
+      const time = t && t.trim() ? t : '00:00';
+      return `${d}T${time}`;
+    }
+
+    const passengers = [];
+    function renderPassengers(){
+      const list = document.getElementById('passengersList');
+      if (!passengers.length){ list.innerHTML = '<div class="muted">No passengers added</div>'; return; }
+      list.innerHTML = passengers.map((p, idx) => `
+        <span class="pill" data-i="${idx}">
+          ${p.name || '—'} (${p.relation || '—'}) • ${p.passportNumber || '—'} • ${p.passportExpiry || '—'}
+          <span class="x" title="Remove">×</span>
+        </span>
+      `).join(' ');
+      list.querySelectorAll('.pill .x').forEach(x => {
+        x.addEventListener('click', () => {
+          const i = Number(x.parentElement.getAttribute('data-i'));
+          if (!Number.isNaN(i)) { passengers.splice(i,1); renderPassengers(); }
+        });
+      });
+    }
+
+    function clearPassengerInputs(){
+      document.getElementById('pName').value = '';
+      document.getElementById('pRelation').value = '';
+      document.getElementById('pPassport').value = '';
+      document.getElementById('pPassportExpiry').value = '';
+    }
+
+    function showForm(){
+      document.getElementById('ftForm').style.display = 'block';
+      const today = new Date().toISOString().slice(0,10);
+      if (!document.getElementById('depDate').value) document.getElementById('depDate').value = today;
+      document.getElementById('isReturn').checked = false;
+      document.getElementById('returnFields').style.display = 'none';
+      renderPassengers();
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    }
+    function hideForm(){
+      document.getElementById('ftForm').style.display = 'none';
+      document.getElementById('fromLocation').value = '';
+      document.getElementById('toLocation').value = '';
+      document.getElementById('ftClass').selectedIndex = 0;
+      document.getElementById('depDate').value = '';
+      document.getElementById('depTime').value = '';
+      document.getElementById('isReturn').checked = false;
+      document.getElementById('returnFields').style.display = 'none';
+      document.getElementById('retDate').value = '';
+      document.getElementById('retTime').value = '';
+      document.getElementById('purpose').value = '';
+      document.getElementById('ftAttachment').value = '';
+      passengers.splice(0, passengers.length);
+    }
+
+    async function submitOrDraft(kind){
+      const fromLoc = document.getElementById('fromLocation').value.trim();
+      const toLoc = document.getElementById('toLocation').value.trim();
+      const cls = document.getElementById('ftClass').value;
+      const depDate = document.getElementById('depDate').value;
+      const depTime = document.getElementById('depTime').value;
+      const isReturn = document.getElementById('isReturn').checked;
+      const retDate = document.getElementById('retDate').value;
+      const retTime = document.getElementById('retTime').value;
+      const purpose = document.getElementById('purpose').value;
+
+      if (!fromLoc || !toLoc || !depDate){ showSnack('Please fill From, To and Departure Date'); return; }
+      if (isReturn && !retDate){ showSnack('Please select Return Date'); return; }
+
+      const payload = {
+        From: fromLoc,           // submit expects From/To
+        To: toLoc,
+        fromLocation: fromLoc,   // draft expects fromLocation/toLocation
+        toLocation: toLoc,
+        Class: cls,
+        DepartingDate: combineDateTime(depDate, depTime),
+        ReturnTrip: !!isReturn,
+        ReturnDate: isReturn ? combineDateTime(retDate, retTime) : '',
+        Purpose: purpose || '',
+        passengers: passengers.slice()
+      };
+
+      const url = kind === 'submit'
+        ? `${API_BASE}/api/flightTicket/submitFlightTicketRequest`
+        : `${API_BASE}/api/flightTicket/draftSaveFlightTicketRequest`;
+      try{
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data?.error || 'Request failed');
+        showSnack(kind === 'submit' ? 'Flight ticket submitted successfully' : 'Flight ticket draft saved');
+        hideForm();
+        loadTransactions();
+      }catch(e){ console.error(e); showSnack(`Error: ${e.message}`); }
+    }
+
+    function fmtDate(s){ if(!s) return '—'; try{ return new Date(s).toISOString().slice(0,10);}catch{ return String(s);} }
+    function boolTxt(v){ return v ? 'Return' : 'One-way'; }
+    function getVal(o, keys){ for(const k of keys){ if(o && o[k] != null) return o[k]; } return undefined; }
+
+    function itemTemplate(r){
+      const reqid = getVal(r, ['ReqID','reqID','reqid']);
+      const from = getVal(r, ['fromLocation','FromLocation']);
+      const to = getVal(r, ['toLocation','ToLocation']);
+      const depart = getVal(r, ['DepartingDate','departingDate']);
+      const returnTrip = getVal(r, ['ReturnTrip','returnTrip']);
+      const status = getVal(r, ['status','Status']);
+      return `
+        <div class="item" data-reqid="${encodeURIComponent(reqid || '')}">
+          <div class="row"><div><b>${from || '—'} → ${to || '—'}</b></div><div class="muted">${status || '—'}</div></div>
+          <div class="muted">Depart: ${fmtDate(depart)} | ${boolTxt(returnTrip)}</div>
+          <div class="muted">ReqID: ${reqid || '—'}</div>
+        </div>
+      `;
+    }
+
+    async function loadTransactions(){
+      statusEl.textContent = 'Loading flight ticket transactions...';
+      list.innerHTML = '';
+      try{
+        const res = await fetch(`${API_BASE}/api/flightTicket/getFlightTicketTransactions`, { credentials: 'include' });
+        if(!res.ok) throw new Error('Failed to load');
+        const rows = await res.json();
+        if(!rows || rows.length === 0){ statusEl.textContent = 'No flight ticket transactions'; return; }
+        statusEl.textContent = '';
+        list.innerHTML = rows.map(itemTemplate).join('');
+        list.querySelectorAll('.item').forEach(el => {
+          el.addEventListener('click', () => {
+            const reqid = el.getAttribute('data-reqid');
+            if(!reqid) return;
+            window.location.href = `/mobile/flight/details?reqid=${reqid}`;
+          });
+        });
+      }catch(e){ console.error(e); statusEl.textContent = `Error: ${e.message}`; }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadTransactions();
+      document.getElementById('btnCreate').addEventListener('click', showForm);
+      document.getElementById('btnCancelFT').addEventListener('click', (e) => { e.preventDefault(); hideForm(); });
+      document.getElementById('btnSubmitFT').addEventListener('click', (e) => { e.preventDefault(); submitOrDraft('submit'); });
+      document.getElementById('btnDraftFT').addEventListener('click', (e) => { e.preventDefault(); submitOrDraft('draft'); });
+      document.getElementById('isReturn').addEventListener('change', (e) => {
+        document.getElementById('returnFields').style.display = e.target.checked ? 'block' : 'none';
+      });
+      document.getElementById('btnAddPassenger').addEventListener('click', (e) => {
+        e.preventDefault();
+        const p = {
+          name: document.getElementById('pName').value.trim(),
+          relation: document.getElementById('pRelation').value.trim(),
+          passportNumber: document.getElementById('pPassport').value.trim(),
+          passportExpiry: document.getElementById('pPassportExpiry').value
+        };
+        if (!p.name || !p.passportNumber){ showSnack('Passenger name and passport number are required'); return; }
+        passengers.push(p);
+        renderPassengers();
+        clearPassengerInputs();
+      });
+    });
+  </script>
+</body>
+</html>

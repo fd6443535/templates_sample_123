@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Teams - Hierarchy</title>
+  <style>
+    :root { --bg:#f7f9fc; --card:#fff; --text:#111827; --muted:#6b7280; --border:#e5e7eb; --primary:#2563eb; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background:var(--bg); color:var(--text); }
+    header { position:sticky; top:0; background:var(--card); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; padding:12px 16px; z-index:5 }
+    .back { background:transparent; border:1px solid var(--border); padding:6px 10px; border-radius:8px; cursor:pointer; }
+    .title { font-weight:700; }
+    .wrap { padding:16px; display:grid; gap:12px; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; }
+    .muted { color:var(--muted); font-size:13px; }
+
+    .root { display:grid; justify-items:center; }
+    .person-card { display:grid; grid-template-columns: 56px 1fr; gap:10px; padding:10px; border:1px solid var(--border); border-radius:12px; background:#fff; min-width:0; }
+    .avatar { width:56px; height:56px; border-radius:999px; display:grid; place-items:center; color:#fff; font-weight:700; }
+    .name { font-weight:700; }
+    .pos, .dept { font-size:13px; color:var(--muted); }
+
+    .levels { display:grid; gap:16px; }
+    .level { position:relative; display:grid; gap:10px; }
+    .level .head { display:flex; align-items:center; gap:10px; }
+    .level .children { display:flex; gap:10px; overflow:auto; padding-bottom:4px; }
+
+    /* connectors */
+    .root-connector { position:relative; height:16px; }
+    .root-connector::before { content:""; position:absolute; left:50%; transform:translateX(-50%); top:0; bottom:0; width:2px; background:linear-gradient(#cbd5e1,#cbd5e1); }
+    .down-connector { position:relative; height:14px; margin-left:28px; }
+    .down-connector::before { content:""; position:absolute; left:28px; top:0; bottom:0; width:2px; background:#cbd5e1; }
+    .children .person-card { position:relative; }
+    .children .person-card::before { content:""; position:absolute; top:-12px; left:28px; width:2px; height:12px; background:#cbd5e1; }
+
+    .hint { font-size:12px; color:#64748b; }
+  </style>
+</head>
+<body>
+  <header>
+    <button class="back" id="btnBack">← Back</button>
+    <div class="title">Teams – Hierarchy</div>
+  </header>
+
+  <div class="wrap">
+    <section class="card">
+      <div id="status" class="muted">Loading team hierarchy...</div>
+      <div id="rootContainer" class="root" style="display:none;"></div>
+      <div class="root-connector" id="rootConnector" style="display:none;"></div>
+      <div id="levelsContainer" class="levels" style="display:none;"></div>
+      <div class="hint" id="hint" style="display:none; margin-top:4px;">Some profiles may repeat if members appear under multiple teams.</div>
+    </section>
+  </div>
+
+  <script>
+    const API_BASE = 'http://localhost:3001';
+
+    document.getElementById('btnBack').addEventListener('click', () => {
+      window.location.href = '/mobile/home';
+    });
+
+    function colorFor(text){
+      let h=0; for (let i=0;i<text.length;i++) h=(h*31+text.charCodeAt(i))>>>0; h%=360; return `hsl(${h} 70% 50%)`; }
+    function initials(name){ if(!name) return '?'; const parts = String(name).trim().split(/\s+/); return (parts[0][0]||'').toUpperCase() + (parts[1]?.[0]||'').toUpperCase(); }
+
+    function personCard({ Name, Position, Department }){
+      const div = document.createElement('div');
+      div.className = 'person-card';
+      const av = document.createElement('div'); av.className='avatar'; av.style.background=colorFor(Name||''); av.textContent=initials(Name||'');
+      const box = document.createElement('div');
+      const nm = document.createElement('div'); nm.className='name'; nm.textContent = Name || '—';
+      const pos = document.createElement('div'); pos.className='pos'; pos.textContent = Position || '—';
+      const dept = document.createElement('div'); dept.className='dept'; dept.textContent = Department || '—';
+      box.appendChild(nm); box.appendChild(pos); box.appendChild(dept);
+      div.appendChild(av); div.appendChild(box);
+      return div;
+    }
+
+    function flattenTwoLevels(team){
+      // team is array of { EmpID, Name, Position, Reports:[] }
+      return team.map(l1 => ({
+        self: { Name: l1.Name, Position: l1.Position, Department: l1.Department },
+        reports: (Array.isArray(l1.Reports) ? l1.Reports : []).map(l2 => ({ Name: l2.Name, Position: l2.Position, Department: l2.Department }))
+      }));
+    }
+
+    async function load(){
+      const status = document.getElementById('status');
+      try{
+        status.textContent = 'Loading team hierarchy...';
+        const [profRes, teamRes] = await Promise.all([
+          fetch(`${API_BASE}/api/profile/getProfileSummary`, { credentials: 'include' }),
+          fetch(`${API_BASE}/api/team/getTeamHierarchy`, { credentials: 'include' })
+        ]);
+        if (!profRes.ok) throw new Error('Failed to load profile');
+        if (!teamRes.ok) throw new Error('Failed to load team');
+        const prof = await profRes.json();
+        const team = await teamRes.json();
+
+        // Root manager card
+        const root = document.getElementById('rootContainer');
+        root.innerHTML = '';
+        root.appendChild(personCard({
+          Name: prof?.Name || prof?.name || '—',
+          Position: prof?.Position || prof?.position || '—',
+          Department: prof?.Department || prof?.department || '—',
+        }));
+        root.style.display = 'grid';
+
+        // Levels (two reporting levels)
+        const levels = flattenTwoLevels(Array.isArray(team) ? team : []);
+        const levelsEl = document.getElementById('levelsContainer');
+        levelsEl.innerHTML = '';
+        if (levels.length){
+          document.getElementById('rootConnector').style.display = 'block';
+          levelsEl.style.display = 'grid';
+          document.getElementById('hint').style.display = 'block';
+        }
+        levels.forEach(group => {
+          const level = document.createElement('div'); level.className='level';
+          const head = document.createElement('div'); head.className='head';
+          head.appendChild(personCard(group.self));
+          level.appendChild(head);
+          const down = document.createElement('div'); down.className='down-connector'; level.appendChild(down);
+          const children = document.createElement('div'); children.className='children';
+          if (group.reports && group.reports.length){
+            group.reports.forEach(r => children.appendChild(personCard(r)));
+          } else {
+            const empty = document.createElement('div'); empty.className='muted'; empty.textContent='No direct reports';
+            children.appendChild(empty);
+          }
+          level.appendChild(children);
+          levelsEl.appendChild(level);
+        });
+
+        status.textContent = '';
+      }catch(e){ console.error(e); status.textContent = `Error: ${e.message}`; }
+    }
+
+    document.addEventListener('DOMContentLoaded', load);
+  </script>
+</body>
+</html>

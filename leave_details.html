@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Leave - Request Details</title>
+  <style>
+    :root { --bg:#f7f9fc; --card:#fff; --text:#222; --muted:#667085; --border:#e5e7eb; --primary:#2563eb; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background:var(--bg); color:var(--text); }
+    header { position:sticky; top:0; background:var(--card); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; padding:12px 16px; }
+    .back { background:transparent; border:1px solid var(--border); padding:6px 10px; border-radius:8px; cursor:pointer; }
+    .title { font-weight:700; }
+    .wrap { padding:16px; display:grid; gap:12px; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; }
+    .muted { color:var(--muted); font-size:13px; }
+    .kv { display:grid; gap:8px; }
+    .row { display:flex; justify-content:space-between; gap:10px; }
+    .key { color:#475569; }
+    .val { font-weight:600; }
+    .fab { position: fixed; right: 16px; bottom: 16px; background: var(--primary); color: #fff; border: 0; width: 52px; height: 52px; border-radius: 999px; font-size: 28px; line-height: 0; cursor: pointer; box-shadow:0 4px 16px rgba(0,0,0,0.2) }
+    .form-card .field { display: grid; gap: 6px; margin-bottom: 10px; }
+    .form-card label { font-size: 13px; color: #475569; }
+    .form-card input[type="date"], .form-card select, .form-card textarea, .form-card input[type="file"] { padding: 8px; border: 1px solid var(--border); border-radius: 8px; font: inherit; }
+    .form-card textarea { min-height: 72px; resize: vertical; }
+    .actions { display:flex; gap: 8px; margin-top: 8px; }
+    .btn { padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); cursor: pointer; background: #fff; }
+    .btn.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .btn.ghost { background: transparent; }
+    /* Actions for approvals */
+    .actions-bar { position: sticky; bottom: 0; background: var(--card); border-top:1px solid var(--border); padding:10px; display:flex; gap:8px; z-index: 10; }
+    .btn.danger { background:#ef4444; color:#fff; border-color:#ef4444; }
+    .btn.success { background:#16a34a; color:#fff; border-color:#16a34a; }
+    /* Delegate dialog */
+    .backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.35); display: none; align-items: center; justify-content: center; z-index: 50; }
+    .dialog { width: min(520px, 95vw); background: var(--card); border:1px solid var(--border); border-radius: 12px; padding: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+    .dialog h3 { margin: 6px 0 10px 0; }
+    .dlg-actions { display:flex; justify-content:flex-end; gap:8px; margin-top: 10px; }
+    .delegate-list { max-height: 45vh; overflow:auto; border:1px solid var(--border); border-radius:10px; padding:8px; display:grid; gap:8px; background:#fff; }
+    .delegate-item { display:flex; align-items:center; gap:10px; padding:6px; border:1px solid var(--border); border-radius:10px; }
+    .delegate-item img { width:32px; height:32px; border-radius:50%; object-fit:cover; border:1px solid var(--border); background:#f8fafc; }
+    .delegate-meta { font-size:12px; color:#475569; }
+    .dlg-input { width: 100%; padding: 8px 10px; border:1px solid var(--border); border-radius: 8px; }
+    /* Snackbar */
+    #snackbar { visibility: hidden; min-width: 240px; max-width: 90vw; background-color: #333; color: #fff; text-align: center; border-radius: 8px; padding: 12px 16px; position: fixed; left: 50%; transform: translateX(-50%); bottom: 24px; z-index: 1000; }
+    #snackbar.show { visibility: visible; animation: fadein 0.2s, fadeout 0.2s 3s; }
+    @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes fadeout { from { opacity: 1; } to { opacity: 0; } }
+  </style>
+</head>
+<body>
+  <header>
+    <button class="back" id="btnBack">← Back</button>
+    <div class="title">Leave – Request Details</div>
+    <button class="back" id="btnWorkflow" style="margin-left:auto">Workflow</button>
+  </header>
+
+  <div class="wrap">
+    <section class="card">
+      <div id="status" class="muted">Loading request details...</div>
+      <div id="content" class="kv" style="display:none;"></div>
+    </section>
+    <section class="card form-card" id="leaveForm" style="display:none;">
+      <div class="muted">New Leave Request</div>
+      <div class="field">
+        <label for="leaveType">Leave Type</label>
+        <select id="leaveType" name="Type"></select>
+        <div id="leaveBalance" class="muted"></div>
+      </div>
+      <div class="field">
+        <label for="fromDate">Start Date</label>
+        <input type="date" id="fromDate" name="FromDate" />
+      </div>
+      <div class="field">
+        <label for="toDate">End Date</label>
+        <input type="date" id="toDate" name="ToDate" />
+      </div>
+      <div class="field">
+        <label for="description">Reason</label>
+        <textarea id="description" name="Description" placeholder="Reason"></textarea>
+      </div>
+      <div class="field">
+        <label for="attachment">Attachment (optional)</label>
+        <input type="file" id="attachment" name="attachment" accept="application/pdf,image/*" />
+      </div>
+      <div class="actions">
+        <button class="btn primary" id="btnSubmitLeave">Submit</button>
+        <button class="btn" id="btnDraftLeave">Save Draft</button>
+        <button class="btn ghost" id="btnCancelLeave">Cancel</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="actions-bar">
+    <button class="btn success" id="btnApprove">Approve</button>
+    <button class="btn danger" id="btnReject">Reject</button>
+    <button class="btn" id="btnDelegate">Delegate</button>
+    <button class="btn" id="btnChangeReq">Change Request</button>
+  </div>
+
+  <!-- Delegate dialog -->
+  <div class="backdrop" id="dlgBackdrop" aria-hidden="true">
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlgTitle">
+      <h3 id="dlgTitle">Delegate Request</h3>
+      <div style="margin-bottom:8px;">
+        <label for="delegateComment" class="muted">Comment (optional)</label>
+        <textarea id="delegateComment" class="dlg-input" rows="2" placeholder="Add a comment (optional)"></textarea>
+      </div>
+      <div class="muted" style="margin-bottom:6px;">Select an employee to delegate to:</div>
+      <div id="delegateList" class="delegate-list"></div>
+      <div class="dlg-actions">
+        <button class="btn" id="btnDlgCancel">Cancel</button>
+        <button class="btn primary" id="btnDlgConfirm" disabled>Delegate</button>
+      </div>
+    </div>
+  </div>
+
+  <button class="fab" id="btnCreate" title="New Leave">+</button>
+  <div id="snackbar"></div>
+
+  <script>
+    const API_BASE = 'http://localhost:3001';
+
+    function getQuery(key) {
+      const u = new URL(window.location.href);
+      return u.searchParams.get(key);
+    }
+
+    document.getElementById('btnBack').addEventListener('click', () => {
+      if (window.history.length > 1) window.history.back();
+      else window.location.href = '/mobile/leave/transactions';
+    });
+
+    function fmtDate(s) {
+      if (!s) return '—';
+      try { return new Date(s).toISOString().slice(0,10); } catch { return String(s); }
+    }
+
+    function renderDetails(d) {
+      const map = [
+        ['ReqID', d.reqID || d.ReqID || d.reqid || '—'],
+        ['EmpID', d.empID || d.EmpID || '—'],
+        ['CompanyID', d.companyID || d.CompanyID || '—'],
+        ['Type', d.type || d.Type || '—'],
+        ['From Date', fmtDate(d.fromDate || d.FromDate)],
+        ['To Date', fmtDate(d.toDate || d.ToDate)],
+        ['Status', d.status || d.Status || '—'],
+        ['Approver EmpID', d.approverEmpID || d.ApproverEmpID || '—'],
+        ['Description', d.description || d.Description || '—'],
+        ['AttachmentID', d.attachmentID || d.AttachmentID || '—'],
+        ['Request Date', fmtDate(d.requestDate || d.RequestDate)]
+      ];
+      const html = map.map(([k,v]) => `
+        <div class="row"><div class="key">${k}</div><div class="val">${v ?? '—'}</div></div>
+      `).join('');
+      const content = document.getElementById('content');
+      content.innerHTML = html;
+      content.style.display = 'grid';
+    }
+
+    // Snackbar helper
+    function showSnack(message) {
+      const bar = document.getElementById('snackbar');
+      bar.textContent = message;
+      bar.classList.add('show');
+      setTimeout(() => bar.classList.remove('show'), 3200);
+    }
+
+    // Load leave request types (with RemainingDays)
+    let leaveTypesLoaded = false;
+    let leaveTypeMap = {};
+    async function loadLeaveTypes() {
+      if (leaveTypesLoaded) return;
+      try {
+        const res = await fetch(`${API_BASE}/api/leave/getLeaveRequestTypes`, { credentials: 'include' });
+        if (!res.ok) throw new Error('Failed to load leave types');
+        const types = await res.json(); // [{ TypeCode, TypeName, RemainingDays }]
+        const sel = document.getElementById('leaveType');
+        sel.innerHTML = '';
+        leaveTypeMap = {};
+        if (Array.isArray(types) && types.length) {
+          types.forEach(t => {
+            const name = t?.TypeName ?? '';
+            const rem = Number.isFinite(+t?.RemainingDays) ? +t.RemainingDays : undefined;
+            if (name) {
+              leaveTypeMap[name] = { remaining: rem };
+              const opt = document.createElement('option');
+              opt.value = name;
+              opt.textContent = name + (rem != null ? ` (Remaining: ${rem})` : '');
+              sel.appendChild(opt);
+            }
+          });
+        } else {
+          const opt = document.createElement('option');
+          opt.value = '';
+          opt.textContent = 'No types available';
+          sel.appendChild(opt);
+        }
+        leaveTypesLoaded = true;
+        updateBalanceDisplay();
+      } catch (e) {
+        console.error(e);
+        showSnack(`Error: ${e.message}`);
+      }
+    }
+
+    function daysBetweenInclusive(fromStr, toStr) {
+      if (!fromStr || !toStr) return 0;
+      const from = new Date(fromStr + 'T00:00:00');
+      const to = new Date(toStr + 'T00:00:00');
+      if (isNaN(from) || isNaN(to)) return 0;
+      const diff = Math.ceil((to - from) / (1000*60*60*24)) + 1;
+      return diff;
+    }
+
+    function updateBalanceDisplay() {
+      const type = document.getElementById('leaveType').value;
+      const fromDate = document.getElementById('fromDate').value;
+      const toDate = document.getElementById('toDate').value;
+      const info = leaveTypeMap[type] || {};
+      const rem = info.remaining;
+      const requested = fromDate && toDate ? daysBetweenInclusive(fromDate, toDate) : 0;
+      const balEl = document.getElementById('leaveBalance');
+      const submitBtn = document.getElementById('btnSubmitLeave');
+      const draftBtn = document.getElementById('btnDraftLeave');
+      if (rem != null) {
+        balEl.textContent = `Remaining: ${rem} day(s). Requested: ${requested || 0}`;
+        const invalid = requested > rem || requested <= 0 || (fromDate && toDate && (new Date(fromDate) > new Date(toDate)));
+        submitBtn.disabled = invalid;
+        draftBtn.disabled = invalid;
+        if (invalid && requested > rem) {
+          balEl.textContent += ' — exceeds remaining balance';
+        }
+      } else {
+        balEl.textContent = '';
+        submitBtn.disabled = false;
+        draftBtn.disabled = false;
+      }
+    }
+
+    function showForm() {
+      document.getElementById('leaveForm').style.display = 'block';
+      // preset dates to today
+      const today = new Date().toISOString().slice(0,10);
+      const fromEl = document.getElementById('fromDate');
+      const toEl = document.getElementById('toDate');
+      if (!fromEl.value) fromEl.value = today;
+      if (!toEl.value) toEl.value = today;
+      loadLeaveTypes();
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    }
+
+    function hideForm() {
+      const form = document.getElementById('leaveForm');
+      form.style.display = 'none';
+      // reset fields
+      document.getElementById('leaveType').selectedIndex = 0;
+      document.getElementById('fromDate').value = '';
+      document.getElementById('toDate').value = '';
+      document.getElementById('description').value = '';
+      document.getElementById('attachment').value = '';
+    }
+
+    async function submitOrDraft(kind) {
+      const type = document.getElementById('leaveType').value;
+      const fromDate = document.getElementById('fromDate').value;
+      const toDate = document.getElementById('toDate').value;
+      const description = document.getElementById('description').value;
+      const file = document.getElementById('attachment').files[0];
+
+      if (!type || !fromDate || !toDate) {
+        showSnack('Please fill Leave Type, Start Date and End Date');
+        return;
+      }
+      const requested = daysBetweenInclusive(fromDate, toDate);
+      if (new Date(fromDate) > new Date(toDate)) {
+        showSnack('Start Date cannot be after End Date');
+        return;
+      }
+      const rem = (leaveTypeMap[type] || {}).remaining;
+      if (rem != null && requested > rem) {
+        showSnack(`Requested ${requested} day(s) exceeds remaining ${rem}`);
+        return;
+      }
+
+      const fd = new FormData();
+      fd.append('Type', type);
+      fd.append('FromDate', fromDate);
+      fd.append('ToDate', toDate);
+      fd.append('Description', description || '');
+      if (file) fd.append('attachment', file);
+
+      const url = kind === 'submit'
+        ? `${API_BASE}/api/leave/submitLeaveRequest`
+        : `${API_BASE}/api/leave/draftSaveLeaveRequest`;
+      try {
+        const res = await fetch(url, { method: 'POST', body: fd, credentials: 'include' });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data?.error || 'Request failed');
+        showSnack(kind === 'submit' ? 'Leave submitted successfully' : 'Leave draft saved');
+        hideForm();
+      } catch (e) {
+        console.error(e);
+        showSnack(`Error: ${e.message}`);
+      }
+    }
+
+    async function loadDetails() {
+      const statusEl = document.getElementById('status');
+      statusEl.textContent = 'Loading request details...';
+      const reqid = getQuery('reqid');
+      if (!reqid) {
+        statusEl.textContent = 'Missing reqid in URL';
+        return;
+      }
+      try {
+        const url = `${API_BASE}/api/leave/getLeaveRequestDetails?reqid=${encodeURIComponent(reqid)}`;
+        const res = await fetch(url, { credentials: 'include' });
+        if (!res.ok) throw new Error(`Failed to load (${res.status})`);
+        const data = await res.json();
+        statusEl.textContent = '';
+        renderDetails(data || {});
+      } catch (e) {
+        console.error(e);
+        statusEl.textContent = `Error: ${e.message}`;
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadDetails();
+      document.getElementById('btnCreate').addEventListener('click', showForm);
+      document.getElementById('btnCancelLeave').addEventListener('click', (e) => { e.preventDefault(); hideForm(); });
+      document.getElementById('btnSubmitLeave').addEventListener('click', (e) => { e.preventDefault(); submitOrDraft('submit'); });
+      document.getElementById('btnDraftLeave').addEventListener('click', (e) => { e.preventDefault(); submitOrDraft('draft'); });
+      document.getElementById('leaveType').addEventListener('change', updateBalanceDisplay);
+      document.getElementById('fromDate').addEventListener('change', updateBalanceDisplay);
+      document.getElementById('toDate').addEventListener('change', updateBalanceDisplay);
+
+      // Action buttons
+      document.getElementById('btnApprove').addEventListener('click', () => doApproveReject('approve'));
+      document.getElementById('btnReject').addEventListener('click', () => doApproveReject('reject'));
+      document.getElementById('btnDelegate').addEventListener('click', openDelegateDialog);
+      document.getElementById('btnChangeReq').addEventListener('click', doChangeRequest);
+
+      // Workflow
+      document.getElementById('btnWorkflow').addEventListener('click', () => {
+        const id = getReqId();
+        window.location.href = `/mobile/workflow?reqid=${encodeURIComponent(id || '')}&type=Leave`;
+      });
+
+      // Delegate dialog buttons
+      document.getElementById('btnDlgCancel').addEventListener('click', closeDelegateDialog);
+      document.getElementById('btnDlgConfirm').addEventListener('click', confirmDelegate);
+    });
+
+    // Approval actions (single request)
+    function getReqId(){ return new URL(window.location.href).searchParams.get('reqid'); }
+
+    async function doApproveReject(action){
+      const reqid = getReqId();
+      if (!reqid) { showSnack('Missing reqid'); return; }
+      const comment = prompt('Comment (optional)');
+      try{
+        const res = await fetch(`${API_BASE}/api/leave/approveRejectLeaveRequest`, {
+          method: 'PATCH',
+          headers: { 'Content-Type':'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ reqid, action, comment: comment || null })
+        });
+        const data = await res.json().catch(()=>({}));
+        if (!res.ok) throw new Error(data?.error || `Failed to ${action}`);
+        showSnack(action === 'approve' ? 'Approved' : 'Rejected');
+        setTimeout(()=>{ window.location.href = '/mobile/approvals/leave/pending'; }, 600);
+      }catch(e){ console.error(e); showSnack(`Error: ${e.message}`); }
+    }
+
+    async function doChangeRequest(){
+      const reqid = getReqId();
+      if (!reqid) { showSnack('Missing reqid'); return; }
+      const comment = prompt('Comment (optional)');
+      try{
+        const res = await fetch(`${API_BASE}/api/leave/changeLeaveRequestApproval`, {
+          method: 'PATCH',
+          headers: { 'Content-Type':'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ reqid, status: 'Change request', comment: comment || null })
+        });
+        const data = await res.json().catch(()=>({}));
+        if (!res.ok) throw new Error(data?.error || 'Failed to mark change request');
+        showSnack('Marked as Change Request');
+        setTimeout(()=>{ window.location.href = '/mobile/approvals/leave/pending'; }, 600);
+      }catch(e){ console.error(e); showSnack(`Error: ${e.message}`); }
+    }
+
+    // Delegate flow
+    let selectedDelegateEmpID = null;
+
+    function closeDelegateDialog(){
+      document.getElementById('dlgBackdrop').style.display = 'none';
+      selectedDelegateEmpID = null;
+      document.getElementById('btnDlgConfirm').disabled = true;
+      document.getElementById('delegateComment').value = '';
+      document.getElementById('delegateList').innerHTML = '';
+    }
+
+    function renderDelegates(list){
+      const box = document.getElementById('delegateList');
+      if (!list || list.length === 0){ box.innerHTML = '<div class="muted">No delegates available</div>'; return; }
+      box.innerHTML = list.map(d => {
+        const img = d.photo ? `data:image/png;base64,${d.photo}` : '';
+        const safeName = d.name || d.Name || d.empid || d.EmpID || 'Employee';
+        const pos = d.position || d.Position || '';
+        const dep = d.department || d.Department || '';
+        const empid = d.empid || d.EmpID || '';
+        return `
+          <label class="delegate-item">
+            <input type="radio" name="delegateChoice" value="${empid}">
+            <img alt="photo" src="${img}" onerror="this.style.display='none'" />
+            <div>
+              <div style="font-weight:600;">${safeName} <span class="muted" style="font-weight:400;">(${empid})</span></div>
+              <div class="delegate-meta">${pos}${pos && dep ? ' • ' : ''}${dep}</div>
+            </div>
+          </label>
+        `;
+      }).join('');
+      box.querySelectorAll('input[name="delegateChoice"]').forEach(r => {
+        r.addEventListener('change', () => {
+          selectedDelegateEmpID = r.value;
+          document.getElementById('btnDlgConfirm').disabled = !selectedDelegateEmpID;
+        });
+      });
+    }
+
+    async function openDelegateDialog(){
+      document.getElementById('dlgBackdrop').style.display = 'flex';
+      document.getElementById('btnDlgConfirm').disabled = true;
+      document.getElementById('delegateList').innerHTML = '<div class="muted">Loading delegates...</div>';
+      try{
+        const res = await fetch(`${API_BASE}/api/request/getDelegates`, { credentials: 'include' });
+        if (!res.ok) throw new Error('Failed to load delegates');
+        const list = await res.json();
+        renderDelegates(list || []);
+      }catch(e){ console.error(e); document.getElementById('delegateList').innerHTML = `<div class=muted>Error: ${e.message}</div>`; }
+    }
+
+    async function confirmDelegate(){
+      const reqid = getReqId();
+      if (!reqid || !selectedDelegateEmpID) return;
+      const comment = document.getElementById('delegateComment').value || null;
+      try{
+        const res = await fetch(`${API_BASE}/api/leave/delegateLeaveRequest`, {
+          method: 'POST',
+          headers: { 'Content-Type':'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ reqid, newApproverEmpID: selectedDelegateEmpID, comment })
+        });
+        const data = await res.json().catch(()=>({}));
+        if (!res.ok) throw new Error(data?.error || 'Failed to delegate');
+        closeDelegateDialog();
+        showSnack('Delegated');
+        setTimeout(()=>{ window.location.href = '/mobile/approvals/leave/pending'; }, 600);
+      }catch(e){ console.error(e); showSnack(`Error: ${e.message}`); }
+    }
+  </script>
+</body>
+</html>

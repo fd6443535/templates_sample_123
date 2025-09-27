@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Document - Transactions</title>
+  <style>
+    :root { --bg:#f7f9fc; --card:#fff; --text:#222; --muted:#667085; --border:#e5e7eb; --primary:#2563eb; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background:var(--bg); color:var(--text); }
+    header { position:sticky; top:0; background:var(--card); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; padding:12px 16px; }
+    .back { background:transparent; border:1px solid var(--border); padding:6px 10px; border-radius:8px; cursor:pointer; }
+    .title { font-weight:700; }
+    .wrap { padding:16px; display:grid; gap:12px; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; }
+    .muted { color:var(--muted); font-size:13px; }
+    .list { display:grid; gap:10px; }
+    .item { border:1px solid var(--border); border-radius:10px; padding:10px; background:#fff; cursor:pointer; }
+    .item:hover { border-color:#c7d2fe; box-shadow:0 2px 8px rgba(0,0,0,0.05) }
+    .row { display:flex; justify-content:space-between; gap:8px; }
+    .fab { position: fixed; right: 16px; bottom: 16px; background: var(--primary); color: #fff; border: 0; width: 52px; height: 52px; border-radius: 999px; font-size: 28px; line-height: 0; cursor: pointer; box-shadow:0 4px 16px rgba(0,0,0,0.2) }
+  </style>
+</head>
+<body>
+  <header>
+    <button class="back" id="btnBack">← Back</button>
+    <div class="title">Document – Transactions</div>
+  </header>
+
+  <div class="wrap">
+    <section class="card">
+      <div class="muted" id="status">Loading document transactions...</div>
+      <div class="list" id="list"></div>
+    </section>
+    <section class="card form-card" id="docForm" style="display:none;">
+      <div class="muted">New Document Request</div>
+      <div class="field">
+        <label for="docType">Document Type</label>
+        <select id="docType" name="Type"></select>
+      </div>
+      <div class="field">
+        <label for="docReason">Reason</label>
+        <textarea id="docReason" name="Reason" placeholder="Reason"></textarea>
+      </div>
+      <div class="actions">
+        <button class="btn primary" id="btnSubmitDoc">Submit</button>
+        <button class="btn" id="btnDraftDoc">Save Draft</button>
+        <button class="btn ghost" id="btnCancelDoc">Cancel</button>
+      </div>
+    </section>
+  </div>
+
+  <button class="fab" id="btnCreate" title="New Document">+</button>
+  <div id="snackbar"></div>
+
+  <script>
+    const API_BASE = 'http://localhost:3001';
+    const list = document.getElementById('list');
+    const statusEl = document.getElementById('status');
+
+    document.getElementById('btnBack').addEventListener('click', () => {
+      window.location.href = '/mobile/home';
+    });
+
+    // Styles reused from other pages
+    (function injectStyles(){
+      const css = `
+      .form-card .field{display:grid;gap:6px;margin-bottom:10px}
+      .form-card label{font-size:13px;color:#475569}
+      .form-card select,.form-card textarea{padding:8px;border:1px solid #e5e7eb;border-radius:8px;font:inherit}
+      .form-card textarea{min-height:72px;resize:vertical}
+      .actions{display:flex;gap:8px;margin-top:8px}
+      .btn{padding:8px 12px;border-radius:8px;border:1px solid #e5e7eb;cursor:pointer;background:#fff}
+      .btn.primary{background:#2563eb;color:#fff;border-color:#2563eb}
+      #snackbar{visibility:hidden;min-width:240px;max-width:90vw;background:#333;color:#fff;text-align:center;border-radius:8px;padding:12px 16px;position:fixed;left:50%;transform:translateX(-50%);bottom:24px;z-index:1000}
+      #snackbar.show{visibility:visible;animation:fadein .2s,fadeout .2s 3s}
+      @keyframes fadein{from{opacity:0}to{opacity:1}}
+      @keyframes fadeout{from{opacity:1}to{opacity:0}}
+      `;
+      const el = document.createElement('style'); el.textContent = css; document.head.appendChild(el);
+    })();
+
+    // Snackbar helper
+    function showSnack(message){
+      const bar = document.getElementById('snackbar');
+      bar.textContent = message;
+      bar.classList.add('show');
+      setTimeout(() => bar.classList.remove('show'), 3200);
+    }
+
+    // Load document types
+    let docTypesLoaded = false;
+    async function loadDocTypes(){
+      if (docTypesLoaded) return;
+      try {
+        const res = await fetch(`${API_BASE}/api/document/getDocumentRequestTypes`, { credentials: 'include' });
+        if (!res.ok) throw new Error('Failed to load document types');
+        const types = await res.json(); // [{ TypeCode, TypeName }]
+        const sel = document.getElementById('docType');
+        sel.innerHTML = '';
+        if (Array.isArray(types) && types.length){
+          types.forEach(t => {
+            const name = t?.TypeName ?? '';
+            if (name){
+              const opt = document.createElement('option');
+              opt.value = name; // submit TypeName as Type
+              opt.textContent = name;
+              sel.appendChild(opt);
+            }
+          });
+        } else {
+          const opt = document.createElement('option');
+          opt.value = '';
+          opt.textContent = 'No types available';
+          sel.appendChild(opt);
+        }
+        docTypesLoaded = true;
+      } catch(e){ console.error(e); showSnack(`Error: ${e.message}`); }
+    }
+
+    function showForm(){
+      document.getElementById('docForm').style.display = 'block';
+      loadDocTypes();
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    }
+    function hideForm(){
+      const form = document.getElementById('docForm');
+      form.style.display = 'none';
+      document.getElementById('docType').selectedIndex = 0;
+      document.getElementById('docReason').value = '';
+    }
+
+    document.getElementById('btnCreate').addEventListener('click', showForm);
+    document.getElementById('btnCancelDoc').addEventListener('click', (e) => { e.preventDefault(); hideForm(); });
+
+    async function submitOrDraft(kind){
+      const type = document.getElementById('docType').value;
+      const reason = document.getElementById('docReason').value;
+      if (!type){ showSnack('Please select a Document Type'); return; }
+      const body = { Type: type, Reason: reason || '' };
+      const url = kind === 'submit'
+        ? `${API_BASE}/api/document/submitDocumentRequest`
+        : `${API_BASE}/api/document/draftSaveDocumentRequest`;
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(body)
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data?.error || 'Request failed');
+        showSnack(kind === 'submit' ? 'Document submitted successfully' : 'Document draft saved');
+        hideForm();
+        loadTransactions();
+      } catch(e){ console.error(e); showSnack(`Error: ${e.message}`); }
+    }
+
+    document.getElementById('btnSubmitDoc').addEventListener('click', (e) => { e.preventDefault(); submitOrDraft('submit'); });
+    document.getElementById('btnDraftDoc').addEventListener('click', (e) => { e.preventDefault(); submitOrDraft('draft'); });
+
+    function fmtDate(s) {
+      if (!s) return '—';
+      try { return new Date(s).toISOString().slice(0,10); } catch { return String(s); }
+    }
+
+    function getVal(o, keys) { for (const k of keys) { if (o && o[k] != null) return o[k]; } return undefined; }
+
+    function itemTemplate(r) {
+      const reqid = getVal(r, ['documentReqID','DocumentReqID','ReqID','reqID','reqid']);
+      const type = getVal(r, ['Type','type']);
+      const status = getVal(r, ['Status','status']);
+      const date = getVal(r, ['ReqDate','reqDate','submittedDate','createdDate']);
+      const dateTxt = fmtDate(date);
+      return `
+        <div class="item" data-reqid="${encodeURIComponent(reqid || '')}">
+          <div class="row"><div><b>${type || '—'}</b></div><div class="muted">${status || '—'}</div></div>
+          <div class="muted">Date: ${dateTxt}</div>
+          <div class="muted">ReqID: ${reqid || '—'}</div>
+        </div>
+      `;
+    }
+
+    async function loadTransactions() {
+      statusEl.textContent = 'Loading document transactions...';
+      list.innerHTML = '';
+      try {
+        const res = await fetch(`${API_BASE}/api/document/getDocumentTransactions`, { credentials: 'include' });
+        if (!res.ok) throw new Error('Failed to load');
+        const rows = await res.json();
+        if (!rows || rows.length === 0) {
+          statusEl.textContent = 'No document transactions';
+          return;
+        }
+        statusEl.textContent = '';
+        list.innerHTML = rows.map(itemTemplate).join('');
+        list.querySelectorAll('.item').forEach(el => {
+          el.addEventListener('click', () => {
+            const reqid = el.getAttribute('data-reqid');
+            if (!reqid) return;
+            window.location.href = `/mobile/document/details?reqid=${reqid}`;
+          });
+        });
+      } catch (e) {
+        console.error(e);
+        statusEl.textContent = `Error: ${e.message}`;
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadTransactions);
+  </script>
+</body>
+</html>

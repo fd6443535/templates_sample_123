@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>On Behalf - Business Trip</title>
+  <style>
+    :root { --bg:#f7f9fc; --card:#fff; --text:#222; --muted:#667085; --border:#e5e7eb; --primary:#2563eb; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background:var(--bg); color:var(--text); }
+    header { position:sticky; top:0; background:var(--card); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; padding:12px 16px; }
+    .back { background:transparent; border:1px solid var(--border); padding:6px 10px; border-radius:8px; cursor:pointer; }
+    .title { font-weight:700; }
+    .wrap { padding:16px; display:grid; gap:12px; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; }
+    .muted { color:var(--muted); font-size:13px; }
+    .form-card .field { display:grid; gap:6px; margin-bottom:10px; }
+    .form-card label { font-size:13px; color:#475569; }
+    .form-card input[type="date"], .form-card input[type="text"], .form-card select, .form-card textarea, .form-card input[type="file"] { padding:8px; border:1px solid var(--border); border-radius:8px; font:inherit; }
+    .form-card textarea { min-height:72px; resize:vertical; }
+    .actions { display:flex; gap:8px; margin-top:8px; }
+    .btn { padding:8px 12px; border-radius:8px; border:1px solid var(--border); cursor:pointer; background:#fff; }
+    .btn.primary { background:var(--primary); color:#fff; border-color:var(--primary); }
+    #snackbar { visibility:hidden; min-width:240px; max-width:90vw; background:#333; color:#fff; text-align:center; border-radius:8px; padding:12px 16px; position:fixed; left:50%; transform:translateX(-50%); bottom:24px; z-index:1000 }
+    #snackbar.show { visibility:visible; animation: fadein .2s, fadeout .2s 3s }
+    @keyframes fadein { from{opacity:0} to{opacity:1} }
+    @keyframes fadeout { from{opacity:1} to{opacity:0} }
+  </style>
+</head>
+<body>
+  <header>
+    <button class="back" id="btnBack">← Back</button>
+    <div class="title">Request on Behalf – Business Trip</div>
+  </header>
+
+  <div class="wrap">
+    <section class="card form-card" id="btForm">
+      <div class="muted">Submit Business Trip on Behalf</div>
+      <div class="field">
+        <label for="empid">Employee ID</label>
+        <input type="text" id="empid" placeholder="Target employee ID" />
+      </div>
+      <div class="field">
+        <label for="location">Location</label>
+        <input type="text" id="location" name="Location" placeholder="City / Site" />
+      </div>
+      <div class="field">
+        <label for="travelMode">Travel Mode</label>
+        <select id="travelMode" name="TravelMode">
+          <option value="">Select…</option>
+          <option>Flight</option>
+          <option>Train</option>
+          <option>Bus</option>
+          <option>Car</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="startDate">Start Date</label>
+        <input type="date" id="startDate" name="StartDate" />
+      </div>
+      <div class="field">
+        <label for="endDate">End Date</label>
+        <input type="date" id="endDate" name="EndDate" />
+      </div>
+      <div class="field">
+        <label for="btReason">Reason</label>
+        <textarea id="btReason" name="reason" placeholder="Reason"></textarea>
+      </div>
+      <div class="field">
+        <label for="attachment">Attachment (optional)</label>
+        <input type="file" id="attachment" name="attachment" accept="application/pdf,image/*" />
+      </div>
+      <div class="actions">
+        <button class="btn primary" id="btnSubmit">Submit</button>
+        <button class="btn" id="btnCancel">Cancel</button>
+      </div>
+    </section>
+  </div>
+
+  <div id="snackbar"></div>
+
+  <script>
+    const API_BASE='http://localhost:3001';
+    document.getElementById('btnBack').addEventListener('click', ()=>{ window.location.href='/mobile/home'; });
+    function showSnack(message){ const bar=document.getElementById('snackbar'); bar.textContent=message; bar.classList.add('show'); setTimeout(()=>bar.classList.remove('show'),3200); }
+
+    document.addEventListener('DOMContentLoaded', ()=>{ const today=new Date().toISOString().slice(0,10); document.getElementById('startDate').value=today; document.getElementById('endDate').value=today; });
+
+    document.getElementById('btnCancel').addEventListener('click', (e)=>{ e.preventDefault(); window.location.href='/mobile/home'; });
+
+    document.getElementById('btnSubmit').addEventListener('click', async (e)=>{
+      e.preventDefault();
+      const empTarget=document.getElementById('empid').value.trim();
+      const location=document.getElementById('location').value.trim();
+      const travelMode=document.getElementById('travelMode').value;
+      const startDate=document.getElementById('startDate').value;
+      const endDate=document.getElementById('endDate').value;
+      const reason=document.getElementById('btReason').value;
+      const file=document.getElementById('attachment').files[0];
+      if(!empTarget){ showSnack('Please enter Employee ID'); return; }
+      if(!location||!travelMode||!startDate||!endDate){ showSnack('Please fill Location, Travel Mode, Start and End dates'); return; }
+      if(new Date(startDate)>new Date(endDate)){ showSnack('Start Date cannot be after End Date'); return; }
+
+      const fd=new FormData();
+      fd.append('EmpID', empTarget); // target employee as required by service
+      fd.append('Location', location);
+      fd.append('TravelMode', travelMode);
+      fd.append('StartDate', startDate);
+      fd.append('EndDate', endDate);
+      fd.append('reason', reason || '');
+      if(file) fd.append('attachment', file);
+
+      try{
+        const res=await fetch(`${API_BASE}/api/businessTrip/submitBusinessTripRequestOnBehalf`,{ method:'POST', body: fd, credentials:'include' });
+        const data=await res.json().catch(()=>({}));
+        if(!res.ok) throw new Error(data?.error||'Request failed');
+        showSnack('Business trip submitted on behalf');
+        setTimeout(()=>{ window.location.href='/mobile/home'; },800);
+      }catch(err){ console.error(err); showSnack(`Error: ${err.message}`); }
+    });
+  </script>
+</body>
+</html>

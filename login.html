@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mobile Demo - Login</title>
+  <style>
+    :root {
+      --bg: #f7f9fc;
+      --card: #ffffff;
+      --text: #222;
+      --muted: #666;
+      --primary: #2563eb;
+      --primary-contrast: #fff;
+      --border: #e5e7eb;
+    }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+      background: var(--bg);
+      color: var(--text);
+    }
+    .wrap {
+      min-height: 100dvh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+    .card {
+      background: var(--card);
+      width: 100%;
+      max-width: 420px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+      overflow: hidden;
+    }
+    header {
+      padding: 20px 20px 0 20px;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 700;
+    }
+    header p {
+      margin: 6px 0 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    form {
+      padding: 20px;
+      display: grid;
+      gap: 14px;
+    }
+    .field {
+      display: grid;
+      gap: 8px;
+    }
+    label {
+      font-size: 13px;
+      color: var(--muted);
+    }
+    input[type="text"], input[type="number"] {
+      appearance: none;
+      width: 100%;
+      padding: 12px 12px;
+      font-size: 16px;
+      line-height: 1.2;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #fff;
+      color: var(--text);
+      outline: none;
+    }
+    input:focus {
+      border-color: #b8c6ff;
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.10);
+    }
+    .actions {
+      display: grid;
+      gap: 10px;
+      margin-top: 4px;
+    }
+    button[type="submit"] {
+      background: var(--primary);
+      color: var(--primary-contrast);
+      border: none;
+      padding: 12px 14px;
+      font-size: 16px;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    .note {
+      padding: 0 20px 20px 20px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <header>
+        <h1>Mobile Demo – Login</h1>
+        <p>Enter Emp ID and Company ID. On success, cookies are set (httpOnly) and you will be redirected to Home.</p>
+      </header>
+      <form method="POST" action="/mobile/login" autocomplete="on">
+        <div class="field">
+          <label for="empid">Emp ID</label>
+          <input id="empid" name="empid" type="text" inputmode="numeric" required placeholder="e.g. 1001" />
+        </div>
+        <div class="field">
+          <label for="companyid">Company ID</label>
+          <input id="companyid" name="companyid" type="text" required placeholder="e.g. 1" />
+        </div>
+        <div class="actions">
+          <button type="submit">Login</button>
+        </div>
+      </form>
+      <div class="note">
+        <p>
+          Notes:
+        </p>
+        <ul>
+          <li>Cookies are set as <code>EmpID</code>/<code>empid</code> and <code>CompanyID</code>/<code>companyid</code> for compatibility.</li>
+          <li>These are httpOnly and readable by the API (server on port 3001).</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

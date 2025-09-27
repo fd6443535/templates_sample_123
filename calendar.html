@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Calendar</title>
+  <style>
+    :root { --bg:#f7f9fc; --card:#fff; --text:#222; --muted:#667085; --border:#e5e7eb; --primary:#2563eb; --green:#22c55e; --teal:#14b8a6; --blue:#3b82f6; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background:var(--bg); color:var(--text); }
+    header { position:sticky; top:0; background:var(--card); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; padding:12px 16px; z-index:10; }
+    .back { background:transparent; border:1px solid var(--border); padding:6px 10px; border-radius:8px; cursor:pointer; }
+    .title { font-weight:700; }
+    .wrap { padding:16px; display:grid; gap:12px; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; }
+    .muted { color:var(--muted); font-size:13px; }
+
+    .cal-header { display:flex; align-items:center; justify-content:space-between; }
+    .nav { display:flex; gap:8px; }
+    .nav button { border:1px solid var(--border); background:#fff; padding:6px 10px; border-radius:8px; cursor:pointer; }
+
+    .grid { display:grid; grid-template-columns: repeat(7, 1fr); gap:6px; }
+    .dow { text-align:center; font-weight:600; color:#475569; font-size:12px; padding:4px 0; }
+    .cell { min-height:84px; border:1px solid var(--border); border-radius:10px; padding:6px; background:#fff; display:flex; flex-direction:column; gap:4px; }
+    .dt { font-size:12px; color:#475569; }
+    .event { font-size:11px; border-radius:8px; padding:2px 6px; color:#0f172a; width:max-content; max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .ev-leave { background:#dcfce7; border:1px solid #bbf7d0; color:#166534; }
+    .ev-trip  { background:#cffafe; border:1px solid #a5f3fc; color:#0f766e; }
+  </style>
+</head>
+<body>
+  <header>
+    <button class="back" id="btnBack">← Back</button>
+    <div class="title">Calendar</div>
+    <div class="nav" style="margin-left:auto">
+      <button id="btnPrev">◀</button>
+      <div id="monthLbl" class="muted" style="min-width:120px; text-align:center;"></div>
+      <button id="btnNext">▶</button>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <section class="card">
+      <div id="status" class="muted">Loading calendar...</div>
+      <div class="grid" id="grid"></div>
+      <div class="muted" id="footNote" style="margin-top:10px;">No any messages</div>
+    </section>
+  </div>
+
+  <script>
+    const API_BASE = 'http://localhost:3001';
+
+    const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const dow = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+    let cur = new Date();
+
+    document.getElementById('btnBack').addEventListener('click', () => {
+      if (window.history.length > 1) window.history.back(); else window.location.href = '/mobile/home';
+    });
+    document.getElementById('btnPrev').addEventListener('click', () => { cur = addMonths(cur, -1); render(); });
+    document.getElementById('btnNext').addEventListener('click', () => { cur = addMonths(cur, 1); render(); });
+
+    function addMonths(d, n){ const dt = new Date(d); dt.setMonth(dt.getMonth()+n); return dt; }
+    function ymd(d){ return d.toISOString().slice(0,10); }
+    function parseDate(s){ try { return new Date(s); } catch { return null; } }
+
+    let dataCache = null;
+
+    async function loadData(){
+      const status = document.getElementById('status');
+      status.textContent = 'Loading calendar...';
+      try {
+        const res = await fetch(`${API_BASE}/api/profile/getCalendar`, { credentials: 'include' });
+        if (!res.ok) throw new Error(`Failed (${res.status})`);
+        dataCache = await res.json();
+        status.textContent = '';
+      } catch(e){
+        console.error(e);
+        status.textContent = `Error: ${e.message}`;
+      }
+    }
+
+    function daysInRange(from, to){
+      const out = []; const start = new Date(from); const end = new Date(to);
+      if (isNaN(start) || isNaN(end)) return out;
+      let d = new Date(start);
+      while (d <= end){ out.push(new Date(d)); d.setDate(d.getDate()+1); }
+      return out;
+    }
+
+    function buildEventsForMonth(year, month){
+      const first = new Date(year, month, 1);
+      const last = new Date(year, month+1, 0);
+      const map = new Map();
+
+      const push = (date, ev) => {
+        const key = ymd(date);
+        if (!map.has(key)) map.set(key, []);
+        map.get(key).push(ev);
+      };
+
+      const leaves = dataCache?.leaves || [];
+      for (const l of leaves){
+        const from = parseDate(l.FromDate || l.fromDate || l.Date || l.date);
+        const to   = parseDate(l.ToDate   || l.toDate   || l.Date || l.date);
+        for (const d of daysInRange(from, to)){
+          if (d < first || d > last) continue;
+          push(d, { type:'leave', label: l.Type || 'Leave' });
+        }
+      }
+
+      const trips = dataCache?.trips || [];
+      for (const t of trips){
+        const from = parseDate(t.StartDate || t.startDate);
+        const to   = parseDate(t.EndDate   || t.endDate   || t.StartDate || t.startDate);
+        for (const d of daysInRange(from, to)){
+          if (d < first || d > last) continue;
+          push(d, { type:'trip', label: (t.Location ? `Trip: ${t.Location}` : 'Trip') });
+        }
+      }
+      return map;
+    }
+
+    function render(){
+      const y = cur.getFullYear();
+      const m = cur.getMonth();
+      document.getElementById('monthLbl').textContent = `${monthNames[m]}, ${y}`;
+
+      const grid = document.getElementById('grid');
+      grid.innerHTML = '';
+      // Header row
+      for (const d of dow){
+        const el = document.createElement('div');
+        el.className = 'dow';
+        el.textContent = d;
+        grid.appendChild(el);
+      }
+
+      const firstOfMonth = new Date(y, m, 1);
+      const startOffset = firstOfMonth.getDay();
+      const days = new Date(y, m+1, 0).getDate();
+
+      const evMap = dataCache ? buildEventsForMonth(y, m) : new Map();
+
+      // Blank cells
+      for (let i=0;i<startOffset;i++){
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        grid.appendChild(cell);
+      }
+      // Month days
+      for (let day=1; day<=days; day++){
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        const dt = document.createElement('div');
+        dt.className = 'dt';
+        dt.textContent = String(day).padStart(2,'0');
+        cell.appendChild(dt);
+
+        const key = ymd(new Date(y, m, day));
+        const events = evMap.get(key) || [];
+        for (const e of events.slice(0,3)){
+          const badge = document.createElement('div');
+          badge.className = `event ${e.type==='leave' ? 'ev-leave' : 'ev-trip'}`;
+          badge.textContent = e.label;
+          cell.appendChild(badge);
+        }
+        if (events.length > 3){
+          const more = document.createElement('div');
+          more.className = 'muted';
+          more.textContent = `+${events.length-3} more`;
+          cell.appendChild(more);
+        }
+        grid.appendChild(cell);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      await loadData();
+      render();
+    });
+  </script>
+</body>
+</html>

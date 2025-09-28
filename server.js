@@ -63,7 +63,7 @@ app.post('/mobile/login', (req, res) => {
     const cookieOpts = {
       httpOnly: true,
       sameSite: 'lax',
-      // secure: true, // enable when serving over HTTPS
+      secure: true, // enable when serving over HTTPS
       path: '/',
       // maxAge: 2 * 60 * 60 * 1000 // 2 hours (optional)
     };

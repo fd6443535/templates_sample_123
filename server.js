@@ -62,7 +62,7 @@ app.post('/mobile/login', (req, res) => {
     // Note: Cookies are domain-scoped (not port-specific). These cookies will be available to the API server as well.
     const cookieOpts = {
       httpOnly: true,
-      sameSite: 'lax',
+      sameSite: 'none',
       secure: true, // enable when serving over HTTPS
       path: '/',
       // maxAge: 2 * 60 * 60 * 1000 // 2 hours (optional)

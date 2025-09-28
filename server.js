@@ -61,7 +61,7 @@ app.post('/mobile/login', (req, res) => {
     // Set httpOnly cookies so the backend can read them.
     // Note: Cookies are domain-scoped (not port-specific). These cookies will be available to the API server as well.
     const cookieOpts = {
-      domain: 'https://backend-lyart-beta.vercel.app',
+      domain: '.vercel.app',
       httpOnly: true,
       sameSite: 'None',
       secure: true, // enable when serving over HTTPS

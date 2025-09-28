@@ -4,57 +4,57 @@
   "trailingSlash": false,
   "builds": [
     { "src": "server.js", "use": "@vercel/node" },
-    { "src": "**/*.html", "use": "@vercel/static" },
+    { "src": "*.html", "use": "@vercel/static" },
     { "src": "static/**", "use": "@vercel/static" }
   ],
-  "routes": [
-    { "src": "^/$", "dest": "/mobile/login" },
+  "rewrites": [
+    { "source": "/", "destination": "/mobile/login" },
 
-    { "src": "^/mobile/login$", "dest": "/server.js" },
-    { "src": "^/mobile/api/(.*)$", "dest": "/server.js" },
+    { "source": "/mobile/login", "destination": "/server.js" },
+    { "source": "/mobile/api/:path*", "destination": "/server.js" },
 
-    { "src": "^/mobile$", "dest": "/login.html" },
-    { "src": "^/mobile/home$", "dest": "/home.html" },
+    { "source": "/mobile", "destination": "/login.html" },
+    { "source": "/mobile/home", "destination": "/home.html" },
 
-    { "src": "^/mobile/profile$", "dest": "/profile.html" },
-    { "src": "^/mobile/calendar$", "dest": "/calendar.html" },
-    { "src": "^/mobile/checkin$", "dest": "/checkin.html" },
+    { "source": "/mobile/profile", "destination": "/profile.html" },
+    { "source": "/mobile/calendar", "destination": "/calendar.html" },
+    { "source": "/mobile/checkin", "destination": "/checkin.html" },
 
-    { "src": "^/mobile/workflow$", "dest": "/workflow.html" },
+    { "source": "/mobile/workflow", "destination": "/workflow.html" },
 
-    { "src": "^/mobile/leave/transactions$", "dest": "/leave_transactions.html" },
-    { "src": "^/mobile/leave/details$", "dest": "/leave_details.html" },
+    { "source": "/mobile/leave/transactions", "destination": "/leave_transactions.html" },
+    { "source": "/mobile/leave/details", "destination": "/leave_details.html" },
 
-    { "src": "^/mobile/document/transactions$", "dest": "/document_transactions.html" },
-    { "src": "^/mobile/document/details$", "dest": "/document_details.html" },
+    { "source": "/mobile/document/transactions", "destination": "/document_transactions.html" },
+    { "source": "/mobile/document/details", "destination": "/document_details.html" },
 
-    { "src": "^/mobile/excuse/transactions$", "dest": "/excuse_transactions.html" },
-    { "src": "^/mobile/excuse/details$", "dest": "/excuse_details.html" },
+    { "source": "/mobile/excuse/transactions", "destination": "/excuse_transactions.html" },
+    { "source": "/mobile/excuse/details", "destination": "/excuse_details.html" },
 
-    { "src": "^/mobile/reimbursement/transactions$", "dest": "/reimbursement_transactions.html" },
-    { "src": "^/mobile/reimbursement/details$", "dest": "/reimbursement_details.html" },
+    { "source": "/mobile/reimbursement/transactions", "destination": "/reimbursement_transactions.html" },
+    { "source": "/mobile/reimbursement/details", "destination": "/reimbursement_details.html" },
 
-    { "src": "^/mobile/flight/transactions$", "dest": "/flight_transactions.html" },
-    { "src": "^/mobile/flight/details$", "dest": "/flight_details.html" },
+    { "source": "/mobile/flight/transactions", "destination": "/flight_transactions.html" },
+    { "source": "/mobile/flight/details", "destination": "/flight_details.html" },
 
-    { "src": "^/mobile/business/transactions$", "dest": "/business_transactions.html" },
-    { "src": "^/mobile/business/details$", "dest": "/business_details.html" },
+    { "source": "/mobile/business/transactions", "destination": "/business_transactions.html" },
+    { "source": "/mobile/business/details", "destination": "/business_details.html" },
 
-    { "src": "^/mobile/onbehalf/leave$", "dest": "/onbehalf_leave.html" },
-    { "src": "^/mobile/onbehalf/excuse$", "dest": "/onbehalf_excuse.html" },
-    { "src": "^/mobile/onbehalf/document$", "dest": "/onbehalf_document.html" },
-    { "src": "^/mobile/onbehalf/reimbursement$", "dest": "/onbehalf_reimbursement.html" },
-    { "src": "^/mobile/onbehalf/flight$", "dest": "/onbehalf_flight.html" },
-    { "src": "^/mobile/onbehalf/business$", "dest": "/onbehalf_business.html" },
+    { "source": "/mobile/onbehalf/leave", "destination": "/onbehalf_leave.html" },
+    { "source": "/mobile/onbehalf/excuse", "destination": "/onbehalf_excuse.html" },
+    { "source": "/mobile/onbehalf/document", "destination": "/onbehalf_document.html" },
+    { "source": "/mobile/onbehalf/reimbursement", "destination": "/onbehalf_reimbursement.html" },
+    { "source": "/mobile/onbehalf/flight", "destination": "/onbehalf_flight.html" },
+    { "source": "/mobile/onbehalf/business", "destination": "/onbehalf_business.html" },
 
-    { "src": "^/mobile/approvals/leave/pending$", "dest": "/pending_leave_transactions.html" },
-    { "src": "^/mobile/approvals/excuse/pending$", "dest": "/pending_excuse_transactions.html" },
-    { "src": "^/mobile/approvals/document/pending$", "dest": "/pending_document_transactions.html" },
-    { "src": "^/mobile/approvals/reimbursement/pending$", "dest": "/pending_reimbursement_transactions.html" },
-    { "src": "^/mobile/approvals/flight/pending$", "dest": "/pending_flight_transactions.html" },
-    { "src": "^/mobile/approvals/business/pending$", "dest": "/pending_business_transactions.html" },
+    { "source": "/mobile/approvals/leave/pending", "destination": "/pending_leave_transactions.html" },
+    { "source": "/mobile/approvals/excuse/pending", "destination": "/pending_excuse_transactions.html" },
+    { "source": "/mobile/approvals/document/pending", "destination": "/pending_document_transactions.html" },
+    { "source": "/mobile/approvals/reimbursement/pending", "destination": "/pending_reimbursement_transactions.html" },
+    { "source": "/mobile/approvals/flight/pending", "destination": "/pending_flight_transactions.html" },
+    { "source": "/mobile/approvals/business/pending", "destination": "/pending_business_transactions.html" },
 
-    { "src": "^/mobile/team/hierarchy$", "dest": "/team_hierarchy.html" },
-    { "src": "^/mobile/team/calendar$", "dest": "/team_calendar.html" }
+    { "source": "/mobile/team/hierarchy", "destination": "/team_hierarchy.html" },
+    { "source": "/mobile/team/calendar", "destination": "/team_calendar.html" }
   ]
 }

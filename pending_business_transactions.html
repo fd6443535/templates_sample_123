@@ -43,6 +43,7 @@
     .delegate-meta { font-size:12px; color:#475569; }
     .dlg-input { width: 100%; padding: 8px 10px; border:1px solid var(--border); border-radius: 8px; }
   </style>
+  <script src="/mobile/static/fetch-tenant.js"></script>
 </head>
 <body>
   <header>
@@ -85,7 +86,7 @@
   </div>
 
   <script>
-    const API_BASE = 'http://localhost:3001';
+    const API_BASE = 'http://localhost:4000';
 
     document.getElementById('btnBack').addEventListener('click', () => { window.location.href = '/mobile/home'; });
     function showSnack(message){ const bar=document.getElementById('snackbar'); bar.textContent=message; bar.classList.add('show'); setTimeout(()=>bar.classList.remove('show'),3200); }
@@ -162,7 +163,7 @@
       statusEl.textContent = 'Loading pending business trip requests...';
       list.innerHTML = '';
       try{
-        const res = await fetch(`${API_BASE}/api/businessTrip/getPendingBusinessTripRequests`, { credentials: 'include' });
+        const res = await fetch(`${API_BASE}/api/getPendingBusinessTripRequests`, { credentials: 'include' });
         if(!res.ok) throw new Error('Failed to load');
         const rows = await res.json();
         renderList(rows || []);
@@ -176,7 +177,7 @@
       const comment = prompt('Comment (optional)');
       try{
         for (const reqid of selected){
-          const res = await fetch(`${API_BASE}/api/businessTrip/approveRejectBusinessTripRequest`, {
+          const res = await fetch(`${API_BASE}/api/approveRejectBusinessTripRequest`, {
             method: 'PATCH',
             headers: { 'Content-Type':'application/json' },
             credentials: 'include',
@@ -234,7 +235,7 @@
       document.getElementById('btnDlgConfirm').disabled = true;
       document.getElementById('delegateList').innerHTML = '<div class="muted">Loading delegates...</div>';
       try{
-        const res = await fetch(`${API_BASE}/api/request/getDelegates`, { credentials: 'include' });
+        const res = await fetch(`${API_BASE}/api/getDelegates`, { credentials: 'include' });
         if (!res.ok) throw new Error('Failed to load delegates');
         const list = await res.json();
         renderDelegates(list || []);
@@ -251,7 +252,7 @@
       const comment = prompt('Comment (optional)');
       try{
         for (const reqid of selected){
-          const res = await fetch(`${API_BASE}/api/businessTrip/changeBusinessTripApproval`, {
+          const res = await fetch(`${API_BASE}/api/changeBusinessTripApproval`, {
             method: 'PATCH',
             headers: { 'Content-Type':'application/json' },
             credentials: 'include',
@@ -277,7 +278,7 @@
       const comments = document.getElementById('delegateComment').value || null;
       try{
         for (const reqid of selected){
-          const res = await fetch(`${API_BASE}/api/businessTrip/delegateBusinessTripRequest`, {
+          const res = await fetch(`${API_BASE}/api/delegateBusinessTripRequest`, {
             method: 'POST',
             headers: { 'Content-Type':'application/json' },
             credentials: 'include',

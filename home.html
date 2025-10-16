@@ -114,6 +114,7 @@
 
     .row { display: grid; gap: 6px; }
   </style>
+  <script src="mobile/static/fetch-tenant.js"></script>
 </head>
 <body>
   <header class="appbar">
@@ -225,7 +226,7 @@
   </div>
 
   <script>
-    const API_BASE = 'https://backend-lyart-beta.vercel.app';
+    const API_BASE = 'http://localhost:4000';
     // Helper to hide all sub-sections
     function hideAllSections() {
       document.querySelectorAll('.card .sub-actions').forEach(el => el.style.display = 'none');
@@ -242,7 +243,7 @@
     async function loadProfile() {
       try {
         document.getElementById('profileStatus').textContent = 'Loading profile...';
-        const res = await fetch(`${API_BASE}/api/profile/getProfileSummary`, { credentials: 'include' });
+        const res = await fetch(`${API_BASE}/api/getProfileSummary`, { credentials: 'include' });
         if (!res.ok) throw new Error('Failed to load profile summary');
         const data = await res.json();
         document.getElementById('profileName').textContent = data?.Name || data?.name || '—';
@@ -260,7 +261,7 @@
     async function loadProfilePhoto() {
       try {
         document.getElementById('profileStatus').textContent = 'Loading photo...';
-        const res = await fetch(`${API_BASE}/api/profile/getPhoto`, { credentials: 'include' });
+        const res = await fetch(`${API_BASE}/api/getPhoto`, { credentials: 'include' });
         if (res.status === 404) {
           document.getElementById('profileStatus').textContent = 'No profile photo';
           return;
@@ -281,7 +282,7 @@
     async function loadLatestAttendance() {
       try {
         document.getElementById('attendanceStatus').textContent = 'Loading attendance...';
-        const res = await fetch(`${API_BASE}/api/attendance/getCheckinCheckoutTime`, { credentials: 'include' });
+        const res = await fetch(`${API_BASE}/api/getCheckinCheckoutTime`, { credentials: 'include' });
         if (res.status === 204) {
           document.getElementById('attendanceStatus').textContent = 'No recent attendance';
           return;
@@ -304,7 +305,7 @@
       const list = document.getElementById('notifList');
       list.innerHTML = '<div class="muted">Loading...</div>';
       try {
-        const res = await fetch(`${API_BASE}/api/notification/getNotifications`, { credentials: 'include' });
+        const res = await fetch(`${API_BASE}/api/getNotifications`, { credentials: 'include' });
         if (!res.ok) throw new Error('Failed to load notifications');
         const items = await res.json();
         if (!items || items.length === 0) {

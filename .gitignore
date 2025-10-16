@@ -1,0 +1,45 @@
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Logs
+logs/
+*.log
+*.out
+
+# Environment variables
+       # For .env.dev, .env.prod etc.
+
+# Build files (if using TypeScript or bundlers)
+dist/
+build/
+*.tsbuildinfo
+
+# OS / Editor specific
+.DS_Store
+Thumbs.db
+
+# VSCode
+.vscode/
+.history/
+
+# Optional: PM2 process file, Docker cache, etc.
+pids/
+*.pid
+*.seed
+
+# Optional: coverage reports, test snapshots
+coverage/
+*.lcov
+
+# Optional: IDE folders
+.idea/
+*.swp
+*.swo
+
+# Misc
+debug.log
+
+

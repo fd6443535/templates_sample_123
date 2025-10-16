@@ -25,6 +25,7 @@
     @keyframes fadein { from{opacity:0} to{opacity:1} }
     @keyframes fadeout { from{opacity:1} to{opacity:0} }
   </style>
+  <script src="/mobile/static/fetch-tenant.js"></script>
 </head>
 <body>
   <header>
@@ -80,7 +81,7 @@
   <div id="snackbar"></div>
 
   <script>
-    const API_BASE='http://localhost:3001';
+    const API_BASE = 'http://localhost:4000';
     document.getElementById('btnBack').addEventListener('click', ()=>{ window.location.href='/mobile/home'; });
     function showSnack(message){ const bar=document.getElementById('snackbar'); bar.textContent=message; bar.classList.add('show'); setTimeout(()=>bar.classList.remove('show'),3200); }
 
@@ -111,7 +112,7 @@
       if(file) fd.append('attachment', file);
 
       try{
-        const res=await fetch(`${API_BASE}/api/businessTrip/submitBusinessTripRequestOnBehalf`,{ method:'POST', body: fd, credentials:'include' });
+        const res=await fetch(`${API_BASE}/api/submitBusinessTripRequestOnBehalf`,{ method:'POST', body: fd, credentials:'include' });
         const data=await res.json().catch(()=>({}));
         if(!res.ok) throw new Error(data?.error||'Request failed');
         showSnack('Business trip submitted on behalf');

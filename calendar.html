@@ -27,6 +27,7 @@
     .ev-leave { background:#dcfce7; border:1px solid #bbf7d0; color:#166534; }
     .ev-trip  { background:#cffafe; border:1px solid #a5f3fc; color:#0f766e; }
   </style>
+  <script src="/mobile/static/fetch-tenant.js"></script>
 </head>
 <body>
   <header>
@@ -48,8 +49,7 @@
   </div>
 
   <script>
-    const API_BASE = 'http://localhost:3001';
-
+    const API_BASE = 'http://localhost:4000';
     const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
     const dow = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
@@ -71,7 +71,7 @@
       const status = document.getElementById('status');
       status.textContent = 'Loading calendar...';
       try {
-        const res = await fetch(`${API_BASE}/api/profile/getCalendar`, { credentials: 'include' });
+        const res = await fetch(`${API_BASE}/api/getCalendar`, { credentials: 'include' });
         if (!res.ok) throw new Error(`Failed (${res.status})`);
         dataCache = await res.json();
         status.textContent = '';

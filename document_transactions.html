@@ -19,6 +19,7 @@
     .row { display:flex; justify-content:space-between; gap:8px; }
     .fab { position: fixed; right: 16px; bottom: 16px; background: var(--primary); color: #fff; border: 0; width: 52px; height: 52px; border-radius: 999px; font-size: 28px; line-height: 0; cursor: pointer; box-shadow:0 4px 16px rgba(0,0,0,0.2) }
   </style>
+  <script src="/mobile/static/fetch-tenant.js"></script>
 </head>
 <body>
   <header>
@@ -53,7 +54,7 @@
   <div id="snackbar"></div>
 
   <script>
-    const API_BASE = 'http://localhost:3001';
+    const API_BASE = 'http://localhost:4000';
     const list = document.getElementById('list');
     const statusEl = document.getElementById('status');
 
@@ -92,7 +93,7 @@
     async function loadDocTypes(){
       if (docTypesLoaded) return;
       try {
-        const res = await fetch(`${API_BASE}/api/document/getDocumentRequestTypes`, { credentials: 'include' });
+        const res = await fetch(`${API_BASE}/api/getDocumentRequestTypes`, { credentials: 'include' });
         if (!res.ok) throw new Error('Failed to load document types');
         const types = await res.json(); // [{ TypeCode, TypeName }]
         const sel = document.getElementById('docType');
@@ -138,8 +139,8 @@
       if (!type){ showSnack('Please select a Document Type'); return; }
       const body = { Type: type, Reason: reason || '' };
       const url = kind === 'submit'
-        ? `${API_BASE}/api/document/submitDocumentRequest`
-        : `${API_BASE}/api/document/draftSaveDocumentRequest`;
+        ? `${API_BASE}/api/submitDocumentRequest`
+        : `${API_BASE}/api/draftSaveDocumentRequest`;
       try {
         const res = await fetch(url, {
           method: 'POST',
@@ -184,7 +185,7 @@
       statusEl.textContent = 'Loading document transactions...';
       list.innerHTML = '';
       try {
-        const res = await fetch(`${API_BASE}/api/document/getDocumentTransactions`, { credentials: 'include' });
+        const res = await fetch(`${API_BASE}/api/getDocumentTransactions`, { credentials: 'include' });
         if (!res.ok) throw new Error('Failed to load');
         const rows = await res.json();
         if (!rows || rows.length === 0) {

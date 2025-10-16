@@ -35,22 +35,23 @@
     .dialog { width: min(520px, 95vw); background: var(--card); border:1px solid var(--border); border-radius: 12px; padding: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
     .dialog h3 { margin: 6px 0 10px 0; }
     .dlg-actions { display:flex; justify-content:flex-end; gap:8px; margin-top: 10px; }
-    .delegate-list { max-height: 45vh; overflow:auto; border:1px solid var(--border); border-radius:10px; padding:8px; display:grid; gap:8px; background:#fff; }
     .delegate-item { display:flex; align-items:center; gap:10px; padding:6px; border:1px solid var(--border); border-radius:10px; }
     .delegate-item img { width:32px; height:32px; border-radius:50%; object-fit:cover; border:1px solid var(--border); background:#f8fafc; }
     .delegate-meta { font-size:12px; color:#475569; }
     .dlg-input { width: 100%; padding: 8px 10px; border:1px solid var(--border); border-radius: 8px; }
     /* Snackbar */
-    #snackbar { visibility: hidden; min-width: 240px; max-width: 90vw; background-color: #333; color: #fff; text-align: center; border-radius: 8px; padding: 12px 16px; position: fixed; left: 50%; transform: translateX(-50%); bottom: 24px; z-index: 1000; }
+    #snackbar.show { visibility: hidden; min-width: 240px; max-width: 90vw; background-color: #333; color: #fff; text-align: center; border-radius: 8px; padding: 12px 16px; position: fixed; left: 50%; transform: translateX(-50%); bottom: 24px; z-index: 1000; }
     #snackbar.show { visibility: visible; animation: fadein 0.2s, fadeout 0.2s 3s; }
     @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
     @keyframes fadeout { from { opacity: 1; } to { opacity: 0; } }
   </style>
+  <script src="/mobile/static/fetch-tenant.js"></script>
 </head>
 <body>
   <header>
     <button class="back" id="btnBack">← Back</button>
     <div class="title">Leave – Request Details</div>
+{{ ... }}
     <button class="back" id="btnWorkflow" style="margin-left:auto">Workflow</button>
   </header>
 
@@ -118,7 +119,7 @@
   <div id="snackbar"></div>
 
   <script>
-    const API_BASE = 'http://localhost:3001';
+    const API_BASE = 'http://localhost:4000';
 
     function getQuery(key) {
       const u = new URL(window.location.href);
@@ -171,7 +172,7 @@
     async function loadLeaveTypes() {
       if (leaveTypesLoaded) return;
       try {
-        const res = await fetch(`${API_BASE}/api/leave/getLeaveRequestTypes`, { credentials: 'include' });
+        const res = await fetch(`${API_BASE}/api/getLeaveRequestTypes`, { credentials: 'include' });
         if (!res.ok) throw new Error('Failed to load leave types');
         const types = await res.json(); // [{ TypeCode, TypeName, RemainingDays }]
         const sel = document.getElementById('leaveType');
@@ -290,8 +291,8 @@
       if (file) fd.append('attachment', file);
 
       const url = kind === 'submit'
-        ? `${API_BASE}/api/leave/submitLeaveRequest`
-        : `${API_BASE}/api/leave/draftSaveLeaveRequest`;
+        ? `${API_BASE}/api/submitLeaveRequest`
+        : `${API_BASE}/api/draftSaveLeaveRequest`;
       try {
         const res = await fetch(url, { method: 'POST', body: fd, credentials: 'include' });
         const data = await res.json().catch(() => ({}));
@@ -313,7 +314,7 @@
         return;
       }
       try {
-        const url = `${API_BASE}/api/leave/getLeaveRequestDetails?reqid=${encodeURIComponent(reqid)}`;
+        const url = `${API_BASE}/api/getLeaveRequestDetails?reqid=${encodeURIComponent(reqid)}`;
         const res = await fetch(url, { credentials: 'include' });
         if (!res.ok) throw new Error(`Failed to load (${res.status})`);
         const data = await res.json();
@@ -360,7 +361,7 @@
       if (!reqid) { showSnack('Missing reqid'); return; }
       const comment = prompt('Comment (optional)');
       try{
-        const res = await fetch(`${API_BASE}/api/leave/approveRejectLeaveRequest`, {
+        const res = await fetch(`${API_BASE}/api/approveRejectLeaveRequest`, {
           method: 'PATCH',
           headers: { 'Content-Type':'application/json' },
           credentials: 'include',
@@ -378,7 +379,7 @@
       if (!reqid) { showSnack('Missing reqid'); return; }
       const comment = prompt('Comment (optional)');
       try{
-        const res = await fetch(`${API_BASE}/api/leave/changeLeaveRequestApproval`, {
+        const res = await fetch(`${API_BASE}/api/changeLeaveRequestApproval`, {
           method: 'PATCH',
           headers: { 'Content-Type':'application/json' },
           credentials: 'include',
@@ -435,7 +436,7 @@
       document.getElementById('btnDlgConfirm').disabled = true;
       document.getElementById('delegateList').innerHTML = '<div class="muted">Loading delegates...</div>';
       try{
-        const res = await fetch(`${API_BASE}/api/request/getDelegates`, { credentials: 'include' });
+        const res = await fetch(`${API_BASE}/api/getDelegates`, { credentials: 'include' });
         if (!res.ok) throw new Error('Failed to load delegates');
         const list = await res.json();
         renderDelegates(list || []);
@@ -447,7 +448,7 @@
       if (!reqid || !selectedDelegateEmpID) return;
       const comment = document.getElementById('delegateComment').value || null;
       try{
-        const res = await fetch(`${API_BASE}/api/leave/delegateLeaveRequest`, {
+        const res = await fetch(`${API_BASE}/api/delegateLeaveRequest`, {
           method: 'POST',
           headers: { 'Content-Type':'application/json' },
           credentials: 'include',

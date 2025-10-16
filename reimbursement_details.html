@@ -38,6 +38,7 @@
     @keyframes fadein { from{opacity:0} to{opacity:1} }
     @keyframes fadeout { from{opacity:1} to{opacity:0} }
   </style>
+  <script src="/mobile/static/fetch-tenant.js"></script>
 </head>
 <body>
   <header>
@@ -80,7 +81,7 @@
   <div id="snackbar"></div>
 
   <script>
-    const API_BASE = 'http://localhost:3001';
+    const API_BASE = 'http://localhost:4000';
     function getQuery(key){ const u=new URL(window.location.href); return u.searchParams.get(key); }
     function fmtDate(s){ if(!s) return '—'; try{ return new Date(s).toISOString().slice(0,10);}catch{ return String(s);} }
     function getVal(o, keys){ for(const k of keys){ if(o && o[k] != null) return o[k]; } return undefined; }
@@ -116,7 +117,7 @@
       const reqid = getQuery('reqid');
       if (!reqid) { statusEl.textContent = 'Missing reqid in URL'; return; }
       try{
-        const url = `${API_BASE}/api/reimbursement/getReimbursementRequestDetails/${encodeURIComponent(reqid)}`;
+        const url = `${API_BASE}/api/getReimbursementRequestDetails/${encodeURIComponent(reqid)}`;
         const res = await fetch(url, { credentials: 'include' });
         if (!res.ok) throw new Error(`Failed to load (${res.status})`);
         const data = await res.json();
@@ -131,7 +132,7 @@
       if (!reqid) { showSnack('Missing reqid'); return; }
       const comment = prompt('Comment (optional)');
       try{
-        const res = await fetch(`${API_BASE}/api/reimbursement/approveRejectReimbursementRequest`, {
+        const res = await fetch(`${API_BASE}/api/approveRejectReimbursementRequest`, {
           method: 'PATCH',
           headers: { 'Content-Type':'application/json' },
           credentials: 'include',
@@ -149,7 +150,7 @@
       if (!reqid) { showSnack('Missing reqid'); return; }
       const comment = prompt('Comment (optional)');
       try{
-        const res = await fetch(`${API_BASE}/api/reimbursement/changeReimbursementApproval`, {
+        const res = await fetch(`${API_BASE}/api/changeReimbursementApproval`, {
           method: 'PATCH',
           headers: { 'Content-Type':'application/json' },
           credentials: 'include',
@@ -195,7 +196,7 @@
       document.getElementById('btnDlgConfirm').disabled = true;
       document.getElementById('delegateList').innerHTML = '<div class="muted">Loading delegates...</div>';
       try{
-        const res = await fetch(`${API_BASE}/api/request/getDelegates`, { credentials: 'include' });
+        const res = await fetch(`${API_BASE}/api/getDelegates`, { credentials: 'include' });
         if (!res.ok) throw new Error('Failed to load delegates');
         const list = await res.json();
         renderDelegates(list || []);
@@ -206,7 +207,7 @@
       if (!reqid || !selectedDelegateEmpID) return;
       const comments = document.getElementById('delegateComment').value || null;
       try{
-        const res = await fetch(`${API_BASE}/api/reimbursement/delegateReimbursementRequest`, {
+        const res = await fetch(`${API_BASE}/api/delegateReimbursementRequest`, {
           method: 'POST',
           headers: { 'Content-Type':'application/json' },
           credentials: 'include',

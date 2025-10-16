@@ -23,6 +23,7 @@
     .ctrls { display:flex; gap:8px; align-items:center; }
     input[type="date"] { padding:8px 10px; border:1px solid var(--border); border-radius:8px; }
   </style>
+  <script src="/mobile/static/fetch-tenant.js"></script>
 </head>
 <body>
   <header>
@@ -61,7 +62,7 @@
   </div>
 
   <script>
-    const API_BASE = 'http://localhost:3001';
+    const API_BASE = 'http://localhost:4000';
 
     // Clock
     function pad(n){ return String(n).padStart(2,'0'); }
@@ -91,7 +92,7 @@
 
     async function loadLatest(){
       try{
-        const res = await fetch(`${API_BASE}/api/attendance/getCheckinCheckoutTime`, { credentials:'include' });
+        const res = await fetch(`${API_BASE}/api/getCheckinCheckoutTime`, { credentials:'include' });
         if (!res.ok) return;
         const d = await res.json();
         const status = document.getElementById('chkStatus');
@@ -103,7 +104,7 @@
 
     async function loadHistory(){
       try{
-        const res = await fetch(`${API_BASE}/api/attendance/getCheckinCheckoutHistory`, { credentials:'include' });
+        const res = await fetch(`${API_BASE}/api/getCheckinCheckoutHistory`, { credentials:'include' });
         if (!res.ok) throw new Error(`Failed (${res.status})`);
         const items = await res.json();
         window.__allRows = items || [];

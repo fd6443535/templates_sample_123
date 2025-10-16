@@ -42,6 +42,7 @@
     .delegate-meta { font-size:12px; color:#475569; }
     .dlg-input { width: 100%; padding: 8px 10px; border:1px solid var(--border); border-radius: 8px; }
   </style>
+  <script src="/mobile/static/fetch-tenant.js"></script>
 </head>
 <body>
   <header>
@@ -113,7 +114,7 @@
   <div id="snackbar"></div>
 
   <script>
-    const API_BASE = 'http://localhost:3001';
+    const API_BASE = 'http://localhost:4000';
     function getQuery(key){ const u=new URL(window.location.href); return u.searchParams.get(key); }
     function fmtDate(s){ if(!s) return '—'; try{ return new Date(s).toISOString().slice(0,10);}catch{ return String(s);} }
     function fmtTime(s){ if(!s) return '—'; try{ const d = new Date(s); return d.toISOString().slice(11,19);}catch{ return String(s);} }
@@ -151,7 +152,7 @@
       if (!reqid) { showSnack('Missing reqid'); return; }
       const comment = prompt('Comment (optional)');
       try{
-        const res = await fetch(`${API_BASE}/api/excuse/approveRejectExcuseRequest`, {
+        const res = await fetch(`${API_BASE}/api/approveRejectExcuseRequest`, {
           method: 'PATCH',
           headers: { 'Content-Type':'application/json' },
           credentials: 'include',
@@ -169,7 +170,7 @@
       if (!reqid) { showSnack('Missing reqid'); return; }
       const comment = prompt('Comment (optional)');
       try{
-        const res = await fetch(`${API_BASE}/api/excuse/changeExcuseApproval`, {
+        const res = await fetch(`${API_BASE}/api/changeExcuseApproval`, {
           method: 'PATCH',
           headers: { 'Content-Type':'application/json' },
           credentials: 'include',
@@ -226,7 +227,7 @@
       document.getElementById('btnDlgConfirm').disabled = true;
       document.getElementById('delegateList').innerHTML = '<div class="muted">Loading delegates...</div>';
       try{
-        const res = await fetch(`${API_BASE}/api/request/getDelegates`, { credentials: 'include' });
+        const res = await fetch(`${API_BASE}/api/getDelegates`, { credentials: 'include' });
         if (!res.ok) throw new Error('Failed to load delegates');
         const list = await res.json();
         renderDelegates(list || []);
@@ -238,7 +239,7 @@
       if (!reqid || !selectedDelegateEmpID) return;
       const comment = document.getElementById('delegateComment').value || null;
       try{
-        const res = await fetch(`${API_BASE}/api/excuse/delegateExcuseRequest`, {
+        const res = await fetch(`${API_BASE}/api/delegateExcuseRequest`, {
           method: 'POST',
           headers: { 'Content-Type':'application/json' },
           credentials: 'include',
@@ -258,7 +259,7 @@
       const reqid = getQuery('reqid');
       if (!reqid) { statusEl.textContent = 'Missing reqid in URL'; return; }
       try{
-        const url = `${API_BASE}/api/excuse/getExcuseRequestDetails/${encodeURIComponent(reqid)}`;
+        const url = `${API_BASE}/api/getExcuseRequestDetails/${encodeURIComponent(reqid)}`;
         const res = await fetch(url, { credentials: 'include' });
         if (!res.ok) throw new Error(`Failed to load (${res.status})`);
         const data = await res.json();
@@ -310,8 +311,8 @@
       if (file) fd.append('attachment', file);
 
       const url = kind === 'submit'
-        ? `${API_BASE}/api/excuse/submitExcuseRequest`
-        : `${API_BASE}/api/excuse/draftSaveExcuseRequest`;
+        ? `${API_BASE}/api/submitExcuseRequest`
+        : `${API_BASE}/api/draftSaveExcuseRequest`;
       try{
         const res = await fetch(url, { method: 'POST', body: fd, credentials: 'include' });
         const data = await res.json().catch(() => ({}));

@@ -31,6 +31,7 @@
     @keyframes fadein { from{opacity:0} to{opacity:1} }
     @keyframes fadeout { from{opacity:1} to{opacity:0} }
   </style>
+  <script src="/mobile/static/fetch-tenant.js"></script>
 </head>
 <body>
   <header>
@@ -77,7 +78,7 @@
   <div id="snackbar"></div>
 
   <script>
-    const API_BASE = 'http://localhost:3001';
+    const API_BASE = 'http://localhost:4000';
     const list = document.getElementById('list');
     const statusEl = document.getElementById('status');
 
@@ -98,7 +99,7 @@
     async function loadRbTypes(){
       if (rbTypesLoaded) return;
       try{
-        const res = await fetch(`${API_BASE}/api/reimbursement/getReimbursementTypes`, { credentials: 'include' });
+        const res = await fetch(`${API_BASE}/api/getReimbursementTypes`, { credentials: 'include' });
         if(!res.ok) throw new Error('Failed to load reimbursement types');
         const types = await res.json(); // [{ TypeCode, TypeName }]
         const sel = document.getElementById('rbType');
@@ -164,8 +165,8 @@
       if (file) fd.append('receipt', file);
 
       const url = kind === 'submit'
-        ? `${API_BASE}/api/reimbursement/submitReimbursementRequest`
-        : `${API_BASE}/api/reimbursement/draftSaveReimbursementRequest`;
+        ? `${API_BASE}/api/submitReimbursementRequest`
+        : `${API_BASE}/api/draftSaveReimbursementRequest`;
       try{
         const res = await fetch(url, { method: 'POST', body: fd, credentials: 'include' });
         const data = await res.json().catch(() => ({}));
@@ -203,7 +204,7 @@
       statusEl.textContent = 'Loading reimbursement transactions...';
       list.innerHTML = '';
       try{
-        const res = await fetch(`${API_BASE}/api/reimbursement/getReimbursementTransactions`, { credentials: 'include' });
+        const res = await fetch(`${API_BASE}/api/getReimbursementTransactions`, { credentials: 'include' });
         if(!res.ok) throw new Error('Failed to load');
         const rows = await res.json();
         if(!rows || rows.length === 0){ statusEl.textContent = 'No reimbursement transactions'; return; }

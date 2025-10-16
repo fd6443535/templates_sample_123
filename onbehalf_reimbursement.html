@@ -25,6 +25,7 @@
     @keyframes fadein { from{opacity:0} to{opacity:1} }
     @keyframes fadeout { from{opacity:1} to{opacity:0} }
   </style>
+  <script src="/mobile/static/fetch-tenant.js"></script>
 </head>
 <body>
   <header>
@@ -69,7 +70,7 @@
   <div id="snackbar"></div>
 
   <script>
-    const API_BASE = 'http://localhost:3001';
+    const API_BASE = 'http://localhost:4000';
 
     document.getElementById('btnBack').addEventListener('click', () => { window.location.href = '/mobile/home'; });
 
@@ -77,7 +78,7 @@
 
     // Load reimbursement types
     let rbTypesLoaded=false;
-    async function loadRbTypes(){ if(rbTypesLoaded) return; try{ const res=await fetch(`${API_BASE}/api/reimbursement/getReimbursementTypes`,{credentials:'include'}); if(!res.ok) throw new Error('Failed to load reimbursement types'); const types=await res.json(); const sel=document.getElementById('rbType'); sel.innerHTML=''; if(Array.isArray(types)&&types.length){ types.forEach(t=>{ const name=t?.TypeName??''; if(name){ const opt=document.createElement('option'); opt.value=name; opt.textContent=name; sel.appendChild(opt);} }); } else { const opt=document.createElement('option'); opt.value=''; opt.textContent='No types available'; sel.appendChild(opt);} rbTypesLoaded=true; }catch(e){ console.error(e); showSnack(`Error: ${e.message}`);} }
+    async function loadRbTypes(){ if(rbTypesLoaded) return; try{ const res=await fetch(`${API_BASE}/api/getReimbursementTypes`,{credentials:'include'}); if(!res.ok) throw new Error('Failed to load reimbursement types'); const types=await res.json(); const sel=document.getElementById('rbType'); sel.innerHTML=''; if(Array.isArray(types)&&types.length){ types.forEach(t=>{ const name=t?.TypeName??''; if(name){ const opt=document.createElement('option'); opt.value=name; opt.textContent=name; sel.appendChild(opt);} }); } else { const opt=document.createElement('option'); opt.value=''; opt.textContent='No types available'; sel.appendChild(opt);} rbTypesLoaded=true; }catch(e){ console.error(e); showSnack(`Error: ${e.message}`);} }
 
     document.addEventListener('DOMContentLoaded', ()=>{ loadRbTypes(); const today=new Date().toISOString().slice(0,10); document.getElementById('rbDate').value=today; });
 
@@ -105,7 +106,7 @@
       fd.append('description', description || '');
       if(file) fd.append('receipt', file);
       try{
-        const res=await fetch(`${API_BASE}/api/reimbursement/submitReimbursementRequestOnBehalf`,{ method:'POST', body:fd, credentials:'include' });
+        const res=await fetch(`${API_BASE}/api/submitReimbursementRequestOnBehalf`,{ method:'POST', body:fd, credentials:'include' });
         const data=await res.json().catch(()=>({}));
         if(!res.ok) throw new Error(data?.error||'Request failed');
         showSnack('Reimbursement submitted on behalf');

@@ -45,6 +45,7 @@
     .dot.leave { background:#22c55e; }
     .dot.trip { background:#60a5fa; }
   </style>
+  <script src="/mobile/static/fetch-tenant.js"></script>
 </head>
 <body>
   <header>
@@ -75,7 +76,7 @@
   </div>
 
   <script>
-    const API_BASE = 'http://localhost:3001';
+    const API_BASE = 'http://localhost:4000';
 
     document.getElementById('btnBack').addEventListener('click', () => {
       window.location.href = '/mobile/home';
@@ -116,7 +117,7 @@
 
     async function fetchCalendar(){
       if (dataCache) return dataCache;
-      const res = await fetch(`${API_BASE}/api/team/getTeamCalendar`, { credentials:'include' });
+      const res = await fetch(`${API_BASE}/api/getTeamCalendar`, { credentials:'include' });
       if (!res.ok) throw new Error('Failed to load team calendar');
       const arr = await res.json();
       // Normalize

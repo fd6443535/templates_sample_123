@@ -46,6 +46,7 @@
     @keyframes fadein { from{opacity:0} to{opacity:1} }
     @keyframes fadeout { from{opacity:1} to{opacity:0} }
   </style>
+  <script src="/mobile/static/fetch-tenant.js"></script>
 </head>
 <body>
   <header>
@@ -74,7 +75,7 @@
   <div id="snackbar"></div>
 
   <script>
-    const API_BASE = 'http://localhost:3001';
+    const API_BASE = 'http://localhost:4000';
     function getQuery(key){ const u=new URL(window.location.href); return u.searchParams.get(key); }
     function showSnack(message){ const bar=document.getElementById('snackbar'); bar.textContent=message; bar.classList.add('show'); setTimeout(()=>bar.classList.remove('show'),3200); }
     function fmtDate(d){ try{ const dt = new Date(d); if(!isNaN(dt)) return dt.toLocaleDateString(undefined, { day:'2-digit', month:'short', year:'numeric' }); }catch{} return d || '—'; }
@@ -142,7 +143,7 @@
       document.getElementById('reqTypeVal').textContent = type || '—';
       if (!reqid){ document.getElementById('status').textContent = 'Missing reqid'; return; }
       try{
-        const res = await fetch(`${API_BASE}/api/request/getRequestTimeline/${encodeURIComponent(reqid)}`, { credentials: 'include' });
+        const res = await fetch(`${API_BASE}/api/getRequestTimeline/${encodeURIComponent(reqid)}`, { credentials: 'include' });
         if (!res.ok) throw new Error(`Failed to load (${res.status})`);
         const data = await res.json();
         const items = Array.isArray(data) ? data.slice() : [];

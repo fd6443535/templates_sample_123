@@ -25,6 +25,7 @@
     @keyframes fadein{from{opacity:0}to{opacity:1}}
     @keyframes fadeout{from{opacity:1}to{opacity:0}}
   </style>
+  <script src="/mobile/static/fetch-tenant.js"></script>
 </head>
 <body>
   <header>
@@ -57,14 +58,14 @@
   <div id="snackbar"></div>
 
   <script>
-    const API_BASE = 'http://localhost:3001';
+    const API_BASE = 'http://localhost:4000';
 
     document.getElementById('btnBack').addEventListener('click', () => { window.location.href = '/mobile/home'; });
     function showSnack(message){ const bar=document.getElementById('snackbar'); bar.textContent=message; bar.classList.add('show'); setTimeout(()=>bar.classList.remove('show'),3200); }
 
     // Load types
     let docTypesLoaded=false;
-    async function loadDocTypes(){ if(docTypesLoaded) return; try{ const res=await fetch(`${API_BASE}/api/document/getDocumentRequestTypes`,{credentials:'include'}); if(!res.ok) throw new Error('Failed to load document types'); const types=await res.json(); const sel=document.getElementById('docType'); sel.innerHTML=''; if(Array.isArray(types)&&types.length){ types.forEach(t=>{ const name=t?.TypeName??''; if(name){ const opt=document.createElement('option'); opt.value=name; opt.textContent=name; sel.appendChild(opt);} }); } else { const opt=document.createElement('option'); opt.value=''; opt.textContent='No types available'; sel.appendChild(opt);} docTypesLoaded=true; }catch(e){ console.error(e); showSnack(`Error: ${e.message}`);} }
+    async function loadDocTypes(){ if(docTypesLoaded) return; try{ const res=await fetch(`${API_BASE}/api/getDocumentRequestTypes`,{credentials:'include'}); if(!res.ok) throw new Error('Failed to load document types'); const types=await res.json(); const sel=document.getElementById('docType'); sel.innerHTML=''; if(Array.isArray(types)&&types.length){ types.forEach(t=>{ const name=t?.TypeName??''; if(name){ const opt=document.createElement('option'); opt.value=name; opt.textContent=name; sel.appendChild(opt);} }); } else { const opt=document.createElement('option'); opt.value=''; opt.textContent='No types available'; sel.appendChild(opt);} docTypesLoaded=true; }catch(e){ console.error(e); showSnack(`Error: ${e.message}`);} }
 
     document.addEventListener('DOMContentLoaded', loadDocTypes);
 
@@ -79,7 +80,7 @@
       if(!type){ showSnack('Please select a Document Type'); return; }
       const body={ empid, Type:type, Reason: reason || '' };
       try{
-        const res=await fetch(`${API_BASE}/api/document/submitDocumentRequestOnBehalf`,{
+        const res=await fetch(`${API_BASE}/api/submitDocumentRequestOnBehalf`,{
           method:'POST',
           headers:{ 'Content-Type':'application/json' },
           credentials:'include',

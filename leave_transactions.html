@@ -31,6 +31,7 @@
     @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
     @keyframes fadeout { from { opacity: 1; } to { opacity: 0; } }
   </style>
+  <script src="/mobile/static/fetch-tenant.js"></script>
 </head>
 <body>
   <header>
@@ -78,7 +79,7 @@
   <div id="snackbar"></div>
 
   <script>
-    const API_BASE = 'http://localhost:3001';
+    const API_BASE = 'http://localhost:4000';
     const list = document.getElementById('list');
     const statusEl = document.getElementById('status');
 
@@ -108,7 +109,7 @@
     async function loadLeaveTypes() {
       if (leaveTypesLoaded) return;
       try {
-        const res = await fetch(`${API_BASE}/api/leave/getLeaveRequestTypes`, { credentials: 'include' });
+        const res = await fetch(`${API_BASE}/api/getLeaveRequestTypes`, { credentials: 'include' });
         if (!res.ok) throw new Error('Failed to load leave types');
         const types = await res.json(); // [{ TypeCode, TypeName, RemainingDays }]
         const sel = document.getElementById('leaveType');
@@ -199,7 +200,7 @@
       fd.append('Description', description || '');
       if (file) fd.append('attachment', file);
 
-      const url = kind === 'submit' ? `${API_BASE}/api/leave/submitLeaveRequest` : `${API_BASE}/api/leave/draftSaveLeaveRequest`;
+      const url = kind === 'submit' ? `${API_BASE}/api/submitLeaveRequest` : `${API_BASE}/api/draftSaveLeaveRequest`;
       try {
         const res = await fetch(url, { method: 'POST', body: fd, credentials: 'include' });
         const data = await res.json().catch(() => ({}));
@@ -242,7 +243,7 @@
       statusEl.textContent = 'Loading leave transactions...';
       list.innerHTML = '';
       try {
-        const res = await fetch(`${API_BASE}/api/leave/getLeaveRequestTransactions`, { credentials: 'include' });
+        const res = await fetch(`${API_BASE}/api/getLeaveRequestTransactions`, { credentials: 'include' });
         if (!res.ok) throw new Error('Failed to load');
         const rows = await res.json();
         if (!rows || rows.length === 0) {

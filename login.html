@@ -1,9 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+ <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Mobile Demo - Login</title>
+ <meta name="viewport" content="width=device-width, initial-scale=1" />
+ <meta name="api-base" content="">
+ <meta name="google-client-id" content="19974373909-jglc07do90a797o5st47uh40ea7c9rhr.apps.googleusercontent.com">
+ <meta name="microsoft-client-id" content="YOUR_MICROSOFT_CLIENT_ID_HERE">
+ <title>Mobile Demo - Login</title>
   <style>
     :root {
       --bg: #f7f9fc;
@@ -48,86 +51,174 @@
       color: var(--muted);
       font-size: 13px;
     }
-    form {
+    .providers {
       padding: 20px;
       display: grid;
-      gap: 14px;
+      gap: 10px;
     }
-    .field {
-      display: grid;
-      gap: 8px;
-    }
-    label {
-      font-size: 13px;
-      color: var(--muted);
-    }
-    input[type="text"], input[type="number"] {
-      appearance: none;
-      width: 100%;
-      padding: 12px 12px;
-      font-size: 16px;
-      line-height: 1.2;
+    .provider {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 12px 14px;
       border: 1px solid var(--border);
       border-radius: 10px;
-      background: #fff;
+      text-decoration: none;
       color: var(--text);
-      outline: none;
+      font-weight: 600;
+      background: #fff;
     }
-    input:focus {
-      border-color: #b8c6ff;
-      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.10);
+    .provider:hover {
+      background: #f9fafb;
     }
-    .actions {
-      display: grid;
-      gap: 10px;
-      margin-top: 4px;
+    .provider.google {
+      border-color: #ea4335;
     }
-    button[type="submit"] {
-      background: var(--primary);
-      color: var(--primary-contrast);
-      border: none;
-      padding: 12px 14px;
-      font-size: 16px;
-      border-radius: 10px;
-      cursor: pointer;
-    }
-    .note {
-      padding: 0 20px 20px 20px;
-      color: var(--muted);
-      font-size: 12px;
+    .provider.microsoft {
+      border-color: #2f2f2f;
     }
   </style>
+  <script src="/mobile/static/fetch-tenant.js"></script>
+  <!-- OAuth SDKs -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="https://alcdn.msauth.net/browser/2.19.0/js/msal-browser.min.js" async></script>
 </head>
-<body>
+ <body>
   <div class="wrap">
+    <!--
     <div class="card">
       <header>
         <h1>Mobile Demo – Login</h1>
         <p>Enter Emp ID and Company ID. On success, cookies are set (httpOnly) and you will be redirected to Home.</p>
       </header>
-      <form method="POST" action="/mobile/login" autocomplete="on">
-        <div class="field">
-          <label for="empid">Emp ID</label>
-          <input id="empid" name="empid" type="text" inputmode="numeric" required placeholder="e.g. 1001" />
-        </div>
-        <div class="field">
-          <label for="companyid">Company ID</label>
-          <input id="companyid" name="companyid" type="text" required placeholder="e.g. 1" />
-        </div>
-        <div class="actions">
-          <button type="submit">Login</button>
-        </div>
-      </form>
-      <div class="note">
-        <p>
-          Notes:
-        </p>
-        <ul>
+{{ ... }}
           <li>Cookies are set as <code>EmpID</code>/<code>empid</code> and <code>CompanyID</code>/<code>companyid</code> for compatibility.</li>
           <li>These are httpOnly and readable by the API (server on port 3001).</li>
         </ul>
       </div>
     </div>
+    -->
+    <div class="card">
+      <header>
+        <h1>Mobile Demo – Login</h1>
+        <p>Continue with your provider.</p>
+      </header>
+      <div class="providers">
+        <div id="btn-google" class="provider google"></div>
+        <a id="btn-microsoft" class="provider microsoft" href="#">Continue with Microsoft</a>
+      </div>
+    </div>
+    <script>
+      (function () {
+        // Resolve API base and client IDs
+        var apiBase =
+          (typeof process !== 'undefined' && process.env && (process.env.api_base || process.env.API_BASE)) ||
+          (document.querySelector('meta[name="api-base"]') && document.querySelector('meta[name="api-base"]').content) ||
+          (typeof window !== 'undefined' && window.API_BASE) ||
+          'http://localhost:4000';
+        function trimSlash(s) { return (s || '').replace(/\/+$/, ''); }
+        function trimStr(s) { return (s || '').trim(); }
+        var b = trimSlash(apiBase);
+        var GOOGLE_CLIENT_ID = trimStr((document.querySelector('meta[name="google-client-id"]') && document.querySelector('meta[name="google-client-id"]').content) || (window.GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID_HERE'));
+        var MS_CLIENT_ID = trimStr((document.querySelector('meta[name="microsoft-client-id"]') && document.querySelector('meta[name="microsoft-client-id"]').content) || (window.MS_CLIENT_ID || 'YOUR_MICROSOFT_CLIENT_ID_HERE'));
+
+        var g = document.getElementById('btn-google');
+        var m = document.getElementById('btn-microsoft');
+
+        function setBusy(btn, on) {
+          try { if (btn) { btn.style.opacity = on ? '0.7' : ''; btn.setAttribute('aria-busy', on ? 'true' : 'false'); } } catch(_){}
+        }
+
+        async function postToken(provider, token) {
+          var url = b + '/api/auth/login/' + provider;
+          var res = await fetch(url, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: token })
+          });
+          var data = await res.json().catch(function(){ return {}; });
+          if (res.ok && data && data.success) return true;
+          throw new Error((data && data.message) || 'Login failed');
+        }
+
+        // GOOGLE: initialize SDK and render the official button which triggers account chooser
+        function initGoogle() {
+          try {
+            if (!window.google || !window.google.accounts || !window.google.accounts.id) return false;
+            // Initialize once; subsequent calls are ignored by GIS
+            window.google.accounts.id.initialize({
+              client_id: GOOGLE_CLIENT_ID,
+              callback: async function (response) {
+                try {
+                  var idToken = response && response.credential;
+                  if (!idToken) throw new Error('Missing Google ID token');
+                  await postToken('google', idToken);
+                  window.location.href = '/mobile/home';
+                } catch (err) {
+                  console.error('Google login error:', err);
+                  alert(err.message || 'Google login failed');
+                }
+              }
+            });
+            if (g) {
+              try { g.innerHTML = ''; } catch(_){}
+              window.google.accounts.id.renderButton(g, { theme: 'filled_blue', size: 'large', type: 'standard', text: 'continue_with' });
+            }
+            // Optionally try One Tap; if it fails to display, no spinner is shown
+            window.google.accounts.id.prompt(function(notification){
+              try {
+                if (notification && notification.isNotDisplayed && notification.isNotDisplayed()) {
+                  console.warn('Google prompt not displayed:', notification.getNotDisplayedReason && notification.getNotDisplayedReason());
+                }
+                if (notification && notification.isSkippedMoment && notification.isSkippedMoment()) {
+                  console.warn('Google prompt skipped:', notification.getSkippedReason && notification.getSkippedReason());
+                }
+              } catch(_){}
+            });
+            return true;
+          } catch(_) { return false; }
+        }
+
+        // MICROSOFT: obtain id_token via MSAL
+        var msalInstance = null;
+        function ensureMsal() {
+          if (!msalInstance && window.msal && window.msal.PublicClientApplication) {
+            msalInstance = new window.msal.PublicClientApplication({
+              auth: { clientId: MS_CLIENT_ID, redirectUri: window.location.origin }
+            });
+          }
+          return msalInstance;
+        }
+
+        async function handleMicrosoftLogin(e) {
+          if (e) e.preventDefault();
+          if (!ensureMsal()) {
+            alert('Microsoft SDK not loaded yet. Please try again.');
+            return;
+          }
+          var btn = m; setBusy(btn, true);
+          try {
+            var result = await msalInstance.loginPopup({ scopes: ['openid', 'profile', 'email'] });
+            var idToken = result && result.idToken;
+            if (!idToken) throw new Error('Missing Microsoft ID token');
+            await postToken('microsoft', idToken);
+            window.location.href = '/mobile/home';
+          } catch (err) {
+            console.error('Microsoft login error:', err);
+            alert(err && err.message ? err.message : 'Microsoft login failed');
+          } finally { setBusy(btn, false); }
+        }
+
+        if (g) {
+          g.removeAttribute('href');
+          // Wait for SDK to be ready, then render the official Google button
+          var _tries = 0; var _iv = setInterval(function(){ if (initGoogle() || ++_tries > 50) clearInterval(_iv); }, 100);
+        }
+        if (m) { m.removeAttribute('href'); m.addEventListener('click', handleMicrosoftLogin); }
+      })();
+    </script>
   </div>
-</body>
-</html>
+ </body>
+ </html>

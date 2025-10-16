@@ -22,7 +22,8 @@
     .key { color:#475569; }
     .val { font-weight:600; }
   </style>
-  <script src="/mobile/static/fetch-tenant.js"></script>
+  <script src="./static/fetch-tenant.js"></script>
+  <script src="./config.js"></script>
 </head>
 <body>
   <header>
@@ -50,7 +51,7 @@
   </div>
 
   <script>
-    const API_BASE = 'http://localhost:4000';
+    //const API_BASE = 'http://localhost:4000';
 
     document.getElementById('btnBack').addEventListener('click', () => {
       if (window.history.length > 1) window.history.back();

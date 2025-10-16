@@ -19,7 +19,8 @@
     .row { display:flex; justify-content:space-between; gap:8px; }
     .fab { position: fixed; right: 16px; bottom: 16px; background: var(--primary); color: #fff; border: 0; width: 52px; height: 52px; border-radius: 999px; font-size: 28px; line-height: 0; cursor: pointer; box-shadow:0 4px 16px rgba(0,0,0,0.2) }
   </style>
-  <script src="/mobile/static/fetch-tenant.js"></script>
+  <script src="./static/fetch-tenant.js"></script>
+  <script src="./config.js"></script>
 </head>
 <body>
   <header>
@@ -54,7 +55,7 @@
   <div id="snackbar"></div>
 
   <script>
-    const API_BASE = 'http://localhost:4000';
+    //const API_BASE = 'http://localhost:4000';
     const list = document.getElementById('list');
     const statusEl = document.getElementById('status');
 

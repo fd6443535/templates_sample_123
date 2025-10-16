@@ -25,7 +25,8 @@
     @keyframes fadein{from{opacity:0}to{opacity:1}}
     @keyframes fadeout{from{opacity:1}to{opacity:0}}
   </style>
-  <script src="/mobile/static/fetch-tenant.js"></script>
+  <script src="./static/fetch-tenant.js"></script>
+  <script src="./config.js"></script>
 </head>
 <body>
   <header>
@@ -58,7 +59,7 @@
   <div id="snackbar"></div>
 
   <script>
-    const API_BASE = 'http://localhost:4000';
+    //const API_BASE = 'http://localhost:4000';
 
     document.getElementById('btnBack').addEventListener('click', () => { window.location.href = '/mobile/home'; });
     function showSnack(message){ const bar=document.getElementById('snackbar'); bar.textContent=message; bar.classList.add('show'); setTimeout(()=>bar.classList.remove('show'),3200); }

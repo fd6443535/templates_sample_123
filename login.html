@@ -79,7 +79,8 @@
       border-color: #2f2f2f;
     }
   </style>
-  <script src="/mobile/static/fetch-tenant.js"></script>
+  <script src="./static/fetch-tenant.js"></script>
+  <script src="./config.js"></script>
   <!-- OAuth SDKs -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="https://alcdn.msauth.net/browser/2.19.0/js/msal-browser.min.js" async></script>
@@ -112,11 +113,7 @@
     <script>
       (function () {
         // Resolve API base and client IDs
-        var apiBase =
-          (typeof process !== 'undefined' && process.env && (process.env.api_base || process.env.API_BASE)) ||
-          (document.querySelector('meta[name="api-base"]') && document.querySelector('meta[name="api-base"]').content) ||
-          (typeof window !== 'undefined' && window.API_BASE) ||
-          'http://localhost:4000';
+        var apiBase = API_BASE;
         function trimSlash(s) { return (s || '').replace(/\/+$/, ''); }
         function trimStr(s) { return (s || '').trim(); }
         var b = trimSlash(apiBase);

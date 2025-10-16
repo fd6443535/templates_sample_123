@@ -33,7 +33,8 @@
     .pill { display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border:1px solid var(--border); border-radius:999px; background:#fff; font-size:13px; }
     .pill .x { cursor:pointer; color:#ef4444; font-weight:700; }
   </style>
-  <script src="/mobile/static/fetch-tenant.js"></script>
+  <script src="./static/fetch-tenant.js"></script>
+  <script src="./config.js"></script>
 </head>
 <body>
   <header>
@@ -119,7 +120,7 @@
   <div id="snackbar"></div>
 
   <script>
-    const API_BASE = 'http://localhost:4000';
+    //const API_BASE = 'http://localhost:4000';
     const list = document.getElementById('list');
     const statusEl = document.getElementById('status');
 

@@ -1,1 +1,2 @@
-window.api = "http://localhost:4000";
+const api = "https://req-for-gate.vercel.app";
+

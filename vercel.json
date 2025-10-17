@@ -10,15 +10,10 @@
   ],
   "rewrites": [
     { "source": "/", "destination": "/mobile/login" },
+    { "source": "/mobile", "destination": "/mobile/login" },
 
     { "source": "/mobile/config.js", "destination": "/config.js" },
     { "source": "/mobile/static/**", "destination": "/static/**" },
-    
-    { "source": "/mobile/login", "destination": "/server.js" },
-    { "source": "/mobile/api/:path*", "destination": "/server.js" },
-
-    { "source": "/mobile", "destination": "/login.html" },
-    { "source": "/mobile/home", "destination": "/server.js" },
    
     { "source": "/mobile/**", "destination": "/server.js" }
   ]

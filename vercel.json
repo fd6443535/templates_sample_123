@@ -18,7 +18,7 @@
     { "source": "/mobile/home", "destination": "/server.js" },
 
     { "source": "/mobile/config.js", "destination": "/config.js" },
-    { "source": "/mobile/static/*", "destination": "/static/*" }
+    { "source": "/mobile/static/:path*", "destination": "/static/:path*" },
     
 
     { "source": "/mobile/profile", "destination": "/profile.html" },

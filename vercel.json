@@ -15,6 +15,6 @@
     { "source": "/mobile/static/**", "destination": "/static/**" },
    
     { "source": "/mobile", "destination": "/server.js" },
-    { "source": "/mobile/:path*", "destination": "/server.js" }
+    { "source": "/mobile/:page((?!static|config\\.js).*)", "destination": "/server.js" }
   ]
 }

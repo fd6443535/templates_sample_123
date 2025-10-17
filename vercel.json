@@ -15,7 +15,7 @@
     { "source": "/mobile/api/:path*", "destination": "/server.js" },
 
     { "source": "/mobile", "destination": "/login.html" },
-    { "source": "/mobile/home", "destination": "/home.html" },
+    { "source": "/mobile/home", "destination": "/server.js" },
 
     { "source": "/mobile/profile", "destination": "/profile.html" },
     { "source": "/mobile/calendar", "destination": "/calendar.html" },

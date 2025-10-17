@@ -13,6 +13,8 @@
     { "source": "/mobile/login", "destination": "/server.js" },
     { "source": "/mobile/api/:path*", "destination": "/server.js" },
 
+    { "source": "/config.js", "destination": "/config.js" },
+
     { "source": "/mobile", "destination": "/login.html" },
     { "source": "/mobile/home", "destination": "/home.html" },
 

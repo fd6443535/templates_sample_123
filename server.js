@@ -18,6 +18,7 @@ app.use(express.json());
 
 // Static files (if we add any assets later)
 app.use('/mobile/static', express.static(path.join(__dirname, 'static')));
+app.use('/mobile', express.static(__dirname));
 
 // Helper to forward cookies to API server
 function buildCookieHeader(req) {

@@ -17,6 +17,8 @@
     { "source": "/mobile", "destination": "/login.html" },
     { "source": "/mobile/home", "destination": "/server.js" },
 
+    { "source": "/mobile/config.js", "destination": "/config.js" },
+
     { "source": "/mobile/profile", "destination": "/profile.html" },
     { "source": "/mobile/calendar", "destination": "/calendar.html" },
     { "source": "/mobile/checkin", "destination": "/checkin.html" },

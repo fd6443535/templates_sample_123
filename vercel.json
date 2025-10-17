@@ -9,7 +9,7 @@
     { "src": "config.js", "use": "@vercel/static" }
   ],
   "rewrites": [
-    { "source": "/**", "destination": "/server.js" },
+    { "source": "/", "destination": "/mobile/login" },
 
     { "source": "/mobile/config.js", "destination": "/config.js" },
     { "source": "/mobile/static/**", "destination": "/static/**" },

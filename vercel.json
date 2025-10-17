@@ -18,7 +18,6 @@
     { "source": "/mobile/home", "destination": "/server.js" },
 
     { "source": "/mobile/config.js", "destination": "/config.js" },
-    { "source": "/mobile/static/**", "destination": "/static/**" },
 
     { "source": "/mobile/profile", "destination": "/profile.html" },
     { "source": "/mobile/calendar", "destination": "/calendar.html" },
